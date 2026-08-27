@@ -1,0 +1,34 @@
+---
+description: Authoritative rules for this reusable Flutter production base. Apply before every repository task.
+alwaysApply: true
+---
+
+# Flutter Base Production — Cursor
+
+Use Agent mode for material work and index the repository before planning.
+Read `AGENTS.md`, `CLAUDE.md`, `docs/REUSABLE_COMPONENT_CATALOG.md`, and relevant
+current docs. `.cursor/reference/` and `.claude/reference/` are historical,
+non-binding material.
+
+- Inspect before editing and plan before a multi-file change.
+- Preserve Clean Architecture, BLoC/Cubit, routing/DI, flavors, localization,
+  canonical widgets, compatibility adapters, tests, and optional-package
+  isolation.
+- Reuse `AppButton`, `DefaultTextField`, `AppDropdown`, `AppStateView`,
+  `AppMedia`, `AppImagePickerField`, `AppPageShell`, standard feedback,
+  `AsyncBlocBuilder`, and `PaginatedListWidget` before adding variants.
+- Keep notifications, Remote Config, Maps, WebView, sockets, analytics, and
+  crash providers in optional packages.
+- Keep Android/iOS IDs, flavors, names, icons, native splash, Maps/Firebase
+  sources, signing, links, APNs, and store preparation in parity. Run
+  `scripts/check_project_identity.sh` after native/identity changes.
+- Never invent APIs, fields, keys, credentials, tool access, device/Figma runs,
+  or command results. Never expose raw backend/plugin errors or sensitive logs.
+- Make file-scoped changes and verify them in the terminal. Test failure,
+  cancellation, concurrency, lifecycle, AR/EN, RTL/LTR, themes, accessibility,
+  debug, and release as applicable.
+- Do not run Git or destructive operations unless explicitly authorized.
+
+Use `scripts/flutter_quality_gate.sh quick|full|release`; expensive builds are
+`release --build`. Use Cursor adapters from `docs/prompts/README.md`. Historical
+rules were archived because they duplicated and contradicted the current base.

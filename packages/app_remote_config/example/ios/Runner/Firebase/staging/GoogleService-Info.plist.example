@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>INSTRUCTIONS</key>
+  <string>Download the staging iOS configuration from Firebase Console.</string>
+  <key>BUNDLE_ID</key>
+  <string>com.flutter.newproject.remoteconfig.staging</string>
+  <key>GOOGLE_APP_ID</key>
+  <string>{{FIREBASE_IOS_STAGING_APP_ID}}</string>
+</dict>
+</plist>

@@ -1,0 +1,2 @@
+// Copy to MapsProduction.local.xcconfig. Never commit the real file.
+GOOGLE_MAPS_API_KEY = {{IOS_MAPS_PRODUCTION_KEY}}

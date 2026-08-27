@@ -1,0 +1,22 @@
+name: app_remote_config_example
+description: Key-free showcase for the optional app_remote_config package.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.13.1 <4.0.0"
+  flutter: ">=3.47.1"
+
+dependencies:
+  app_remote_config:
+    path: ../
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

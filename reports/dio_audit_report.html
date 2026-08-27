@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dio Network Layer Audit (Re-audit: Resolved) — clean_arch_base</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b333f;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#58a6ff;
+    --green:#2ea043; --green-bg:#0f2417; --green-line:#1f6f33;
+    --amber:#d29922; --amber-bg:#2a2310; --amber-line:#7a5b16;
+    --red:#f85149; --red-bg:#2a1416; --red-line:#8a2b28;
+    --code:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 22px 80px;}
+  h1{font-size:28px;margin:0 0 6px;letter-spacing:-.3px}
+  h2{font-size:21px;margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:0 0 4px}
+  a{color:var(--accent);text-decoration:none}
+  code,pre{font-family:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace}
+  code{background:#222b36;padding:1px 6px;border-radius:5px;font-size:13px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow:auto;font-size:12.5px;line-height:1.55;margin:12px 0 0}
+  pre code{background:none;padding:0;font-size:12.5px;color:#d7e2ee}
+  .sub{color:var(--muted);font-size:14px}
+  .verdict-badge{display:inline-block;font-weight:700;font-size:15px;padding:8px 16px;
+    border-radius:8px;margin-top:14px;border:1px solid}
+  .v-yes{background:var(--green-bg);color:#5ed27a;border-color:var(--green-line)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .stat{text-align:center}
+  .stat .n{font-size:30px;font-weight:800;line-height:1}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
+  .n-green{color:var(--green)} .n-amber{color:var(--amber)} .n-red{color:var(--red)}
+  .n-blue{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;
+    background:var(--panel2)}
+  tr:last-child td{border-bottom:none}
+  td.center{text-align:center;white-space:nowrap}
+  .pill{display:inline-block;font-weight:700;font-size:12px;padding:3px 9px;border-radius:20px;border:1px solid}
+  .p-ok{background:var(--green-bg);color:#5ed27a;border-color:var(--green-line)}
+  .p-pass{background:var(--green-bg);color:#5ed27a;border-color:var(--green-line)}
+  .ev{font-family:"SF Mono",ui-monospace,monospace;font-size:12px;color:#b7c2cd}
+  .pcard{border:1px solid var(--line);border-radius:12px;margin-top:20px;overflow:hidden}
+  .pcard>.head{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;justify-content:space-between;
+    background:var(--green-bg);border-bottom:1px solid var(--green-line)}
+  .pcard .body{padding:8px 18px 20px}
+  .sev{font-size:11px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:6px;white-space:nowrap}
+  .sev-fixed{background:var(--green-bg);color:#5ed27a;border:1px solid var(--green-line)}
+  .was{font-size:11px;font-weight:700;color:#e3b341;text-transform:uppercase;letter-spacing:.5px;
+    margin:14px 0 4px}
+  .lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.5px;margin:16px 0 4px}
+  .lbl.fix{color:#5ed27a}
+  .applied{display:inline-block;font-size:11px;font-weight:700;color:#5ed27a;border:1px solid var(--green-line);
+    background:var(--green-bg);border-radius:6px;padding:2px 8px;margin-left:8px}
+  ul.files{columns:2;list-style:none;padding:0;margin:12px 0 0;font-size:13px}
+  ul.files li{padding:2px 0;color:#c2ccd6}
+  ul.files li::before{content:"›";color:var(--accent);margin-right:8px}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  .hl-red{color:#ff8a82;font-weight:600}
+  .hl-green{color:#5ed27a;font-weight:600}
+  .filechip{display:inline-block;background:#222b36;border:1px solid var(--line);border-radius:6px;
+    padding:2px 8px;margin:3px 6px 3px 0;font-family:ui-monospace,monospace;font-size:12px;color:#cdd6e0}
+  .foot{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  .toc{font-size:13px;color:var(--muted)}
+  .toc a{margin-right:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Dio Network Layer — Audit &amp; Fix Report</h1>
+  <div class="sub">
+    Repository: <code>flutter_clean_arch_base</code> · package <code>clean_arch_base</code> ·
+    branch <code>main</code><br>
+    Date: <strong>2026-06-06</strong> · Dio <code>5.9.2</code> · status:
+    <strong>re-audited after fixes</strong> · tests: mocked adapters only, <strong>no real network</strong>.
+  </div>
+  <div class="verdict-badge v-yes">VERDICT — Production-ready: YES · all 6 issues fixed &amp; verified (10/10 scenarios ✅)</div>
+  <p class="note">
+    The original audit found 2 ship-blocking (❌) and 3 risky (⚠️) issues. <strong>All have been fixed with the
+    correct, compile-safe solutions and verified by tests.</strong> The audit suite is now
+    <span class="hl-green">36/36 green</span> and the whole project is <span class="hl-green">86/86 green</span> with
+    a clean <code>flutter analyze</code>. The four touched files are listed under
+    <a href="#fixes">Fixes applied</a>; each problem card shows the before → applied-fix.
+  </p>
+
+  <div class="toc">
+    <a href="#summary">Summary</a>
+    <a href="#fixes">Fixes applied</a>
+    <a href="#verdicts">Verdict table</a>
+    <a href="#problems">Resolved issues</a>
+    <a href="#tests">Test results</a>
+    <a href="#files">Files reviewed</a>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="summary">1 · Summary (after fixes)</h2>
+  <div class="grid">
+    <div class="card stat"><div class="n n-green">10</div><div class="l">✅ Handled</div></div>
+    <div class="card stat"><div class="n n-amber">0</div><div class="l">⚠️ Risky</div></div>
+    <div class="card stat"><div class="n n-red">0</div><div class="l">❌ Missing</div></div>
+    <div class="card stat"><div class="n n-blue">36</div><div class="l">Audit tests passed</div></div>
+    <div class="card stat"><div class="n n-green">0</div><div class="l">Tests failed</div></div>
+  </div>
+  <p class="note">
+    Before → after: ✅ 5→10, ⚠️ 3→0, ❌ 2→0. Audit suite 31✅/7❌ → <strong>36✅/0❌</strong>
+    (3 bug-proving tests were converted into real-path regression tests). Whole project:
+    <strong>86 passed / 0 failed</strong>. <code>flutter analyze</code>: <strong>No issues found</strong>.
+  </p>
+
+  <!-- ============================================================ -->
+  <h2 id="fixes">2 · Fixes applied</h2>
+  <table>
+    <thead><tr><th>#</th><th>Issue (was)</th><th>File changed</th><th>The fix</th></tr></thead>
+    <tbody>
+      <tr><td>P1</td><td class="hl-red">❌ Refresh deadlock (every 401 hung forever)</td>
+        <td><span class="filechip">interceptors/auth_interceptor.dart</span></td>
+        <td>Changed <code>QueuedInterceptor</code> → plain <code>Interceptor</code>; refresh now runs on a throwaway
+          <code>Dio</code>; single-flight kept via <code>Completer</code>.</td></tr>
+      <tr><td>P2</td><td class="hl-red">❌ <code>queryParameters</code> threw an uncaught <code>TypeError</code></td>
+        <td><span class="filechip">base/base_remote_source.dart</span></td>
+        <td><code>_normalizeArabicDigits</code> now returns <code>Map&lt;String,dynamic&gt;</code> (typed
+          <code>.map&lt;String,dynamic&gt;</code> + stringified keys).</td></tr>
+      <tr><td>P3</td><td class="hl-red">❌ <code>asFormData:true</code> silently dropped</td>
+        <td><span class="filechip">base/base_remote_source.dart</span></td>
+        <td>Same fix as P2 — the <code>is Map&lt;String,dynamic&gt;</code> guard now passes, so
+          <code>FormData.fromMap</code> runs.</td></tr>
+      <tr><td>P4</td><td class="hl-red">⚠️ Non-JSON body → misleading “no internet”</td>
+        <td><span class="filechip">parser/response_parser.dart</span></td>
+        <td>New <code>_classifyUnknown</code> maps a json-decode <code>FormatException</code> to
+          <code>ParseFailure</code>; real transport errors stay <code>NetworkFailure</code>.</td></tr>
+      <tr><td>P5</td><td class="hl-red">⚠️ Retried multipart reused single-use <code>FormData</code></td>
+        <td><span class="filechip">interceptors/auth_interceptor.dart</span></td>
+        <td><code>_retry</code> now <code>req.data = (data as FormData).clone()</code> before re-sending.</td></tr>
+      <tr><td>P6</td><td class="hl-red">⚠️ Offline replay had no idempotency key</td>
+        <td><span class="filechip">offline/offline_queue_manager.dart</span></td>
+        <td>Every replay sends <code>Idempotency-Key: op.id</code> (stable v4 UUID across retries).</td></tr>
+    </tbody>
+  </table>
+  <p class="note">No public API changed — these are behaviour-preserving corrections. The 4 files compile clean and all
+    callers are unaffected.</p>
+
+  <!-- ============================================================ -->
+  <h2 id="verdicts">3 · Verdict table (post-fix)</h2>
+  <table>
+    <thead>
+      <tr><th style="width:28px">#</th><th>Scenario</th><th style="width:110px">Verdict</th>
+      <th style="width:230px">Evidence (file:line)</th><th>What happens at runtime now</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Timeouts</td><td class="center"><span class="pill p-ok">✅ Handled</span></td>
+        <td class="ev">dio_client.dart:80–82<br>response_parser.dart:64–67</td>
+        <td>connect/send/receive 15s; each maps to a readable <code>TimeoutFailure</code>.</td></tr>
+      <tr><td>2</td><td>Network / connectivity</td><td class="center"><span class="pill p-ok">✅ Handled</span></td>
+        <td class="ev">response_parser.dart:90–93,<br>112–117; base_remote_source.dart:216</td>
+        <td><code>connectionError</code>/<code>SocketException</code> → <code>NetworkFailure</code>; catch-all guarantees
+          nothing escapes uncaught.</td></tr>
+      <tr><td>3</td><td>Status codes</td><td class="center"><span class="pill p-ok">✅ Handled</span></td>
+        <td class="ev">dio_client.dart:90;<br>status_code_handler.dart:12–38</td>
+        <td>Explicit <code>validateStatus</code>; all of 400/401/403/404/409/422/429/500/502/503 map distinctly; body
+          decode guarded.</td></tr>
+      <tr><td>4</td><td>HTML / non-JSON body</td><td class="center"><span class="pill p-ok">✅ Handled <span class="applied">fixed</span></span></td>
+        <td class="ev">response_parser.dart:118–127<br>(<code>_classifyUnknown</code>)</td>
+        <td>HTML/garbage under <em>any</em> content-type now yields a clean <code>ParseFailure</code> — no more
+          misleading “no internet,” no <code>FormatException</code> crash.</td></tr>
+      <tr><td>5</td><td>Refresh token</td><td class="center"><span class="pill p-ok">✅ Handled <span class="applied">fixed</span></span></td>
+        <td class="ev">auth_interceptor.dart:21,<br>110–148, 150–162</td>
+        <td>401 → single refresh (throwaway Dio) → original request retried with the new token; concurrent 401s share
+          one refresh; <strong>no hang.</strong></td></tr>
+      <tr><td>6</td><td>skipAuth flag</td><td class="center"><span class="pill p-ok">✅ Handled</span></td>
+        <td class="ev">base_remote_source.dart:154;<br>auth_interceptor.dart:50,98</td>
+        <td><code>skipAuth:true</code> omits the Bearer header and the refresh cycle.</td></tr>
+      <tr><td>7</td><td>Query / body / multipart</td><td class="center"><span class="pill p-ok">✅ Handled <span class="applied">fixed</span></span></td>
+        <td class="ev">base_remote_source.dart:178–193;<br>auth_interceptor.dart:150–162</td>
+        <td><code>queryParameters</code> no longer throw; <code>asFormData:true</code> sends real multipart
+          (Dio-set boundary); a 401’d upload is retried with a rebuilt (non-empty) body.</td></tr>
+      <tr><td>8</td><td>Cancellation</td><td class="center"><span class="pill p-ok">✅ Handled</span></td>
+        <td class="ev">base_remote_source.dart:204–213;<br>request_cancellation_manager.dart:14–27</td>
+        <td>Per-key <code>CancelToken</code>s; cancel → <code>CancelledFailure</code> (silent no-op); unrelated requests
+          keep running.</td></tr>
+      <tr><td>9</td><td>Offline queue</td><td class="center"><span class="pill p-ok">✅ Handled <span class="applied">fixed</span></span></td>
+        <td class="ev">offline_queue_manager.dart:157–175</td>
+        <td>Queue/persist/FIFO-replay/sensitive-strip/retry-cap; each replay now carries a stable
+          <code>Idempotency-Key</code> so a lost response can’t duplicate a write.</td></tr>
+      <tr><td>10</td><td>Interceptor structure</td><td class="center"><span class="pill p-ok">✅ Handled <span class="applied">fixed</span></span></td>
+        <td class="ev">dio_client.dart:18–32;<br>auth_interceptor.dart:21</td>
+        <td>Order intact (Locale→Auth→Retry→Cache→Logging); the unsound <code>QueuedInterceptor</code>+nested-await
+          pattern is gone, so no path can hang on the auth queue.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ============================================================ -->
+  <h2 id="problems">4 · Resolved issues <span class="sub">(before → applied fix)</span></h2>
+
+  <!-- P1 -->
+  <div class="pcard">
+    <div class="head">
+      <div><h3>P1 · Refresh-token cycle deadlock <span class="applied">RESOLVED</span></h3>
+        <div class="sub">Scenario 5 &amp; 10 · <code>auth_interceptor.dart</code></div></div>
+      <span class="sev sev-fixed">✅ FIXED</span>
+    </div>
+    <div class="body">
+      <div class="was">Was</div>
+      <p><code>AuthInterceptor extends QueuedInterceptor</code> handled the 401 in <code>onResponse</code> and awaited a
+      refresh on the same <code>Dio</code>; the refresh’s 200 response was stuck behind the original 401 in the one shared
+      <code>_responseQueue</code>, so the request hung forever (verified: refresh fired once, retry never did).</p>
+      <div class="lbl fix">Applied fix — plain Interceptor + throwaway refresh Dio + single-flight Completer</div>
+<pre><code>class AuthInterceptor extends Interceptor {              // was: QueuedInterceptor
+  ...
+  Future&lt;bool&gt; _doRefresh() async {
+    final refreshToken = _storage.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    // Throwaway client so the refresh response does NOT pass back through THIS
+    // interceptor (routing it through `_dio` re-enters onResponse -&gt; deadlock).
+    final tokenDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl))
+      ..httpClientAdapter = _dio.httpClientAdapter;
+    final res = await tokenDio.post(
+      ApiEndpoints.refreshToken,
+      data: {'refresh_token': refreshToken},
+      options: Options(validateStatus: (s) =&gt; s != null &amp;&amp; s &lt; 500),
+    );
+    if (res.statusCode != 200 || res.data is! Map) return false;
+    final data = res.data as Map;
+    final access = data['access_token'] ?? data['token'];
+    final refresh = data['refresh_token'];
+    if (access is! String || access.isEmpty) return false;
+    await _storage.save(access: access, refresh: refresh is String ? refresh : null);
+    return true;
+  }
+
+  /// Single-flight: concurrent 401s all await the same in-flight refresh.
+  Future&lt;bool&gt; _refresh() {
+    final inFlight = _refreshCompleter;
+    if (inFlight != null) return inFlight.future;
+    final completer = _refreshCompleter = Completer&lt;bool&gt;();
+    _doRefresh()
+        .then(completer.complete)
+        .catchError((Object e, StackTrace st) =&gt; completer.completeError(e, st))
+        .whenComplete(() =&gt; _refreshCompleter = null);
+    return completer.future;
+  }</code></pre>
+      <p class="note">Verified by tests: <em>“401 WITH a refresh token → refresh once then retry”</em> and
+      <em>“concurrent 401s trigger exactly ONE refresh”</em> both pass against the real interceptor.</p>
+    </div>
+  </div>
+
+  <!-- P2 + P3 -->
+  <div class="pcard">
+    <div class="head">
+      <div><h3>P2 + P3 · <code>queryParameters</code> TypeError &amp; <code>asFormData</code> dropped <span class="applied">RESOLVED</span></h3>
+        <div class="sub">Scenario 7 · <code>base_remote_source.dart</code></div></div>
+      <span class="sev sev-fixed">✅ FIXED</span>
+    </div>
+    <div class="body">
+      <div class="was">Was</div>
+      <p><code>_normalizeArabicDigits</code> returned a <code>Map&lt;dynamic, Object?&gt;</code>. That made the
+      <code>queryParameters … as Map&lt;String, dynamic&gt;</code> cast throw an uncaught <code>TypeError</code>
+      (crashing every list/search GET), and made the <code>asFormData &amp;&amp; requestData is Map&lt;String, dynamic&gt;</code>
+      guard fail (so uploads were sent as broken JSON, never as multipart).</p>
+      <div class="lbl fix">Applied fix — preserve the <code>Map&lt;String, dynamic&gt;</code> shape</div>
+<pre><code>static Object? _normalizeArabicDigits(Object? value) {
+  if (value is String) return value.toEnglishNumbers();
+  if (value is Map) {
+    // Keep the result a Map&lt;String, dynamic&gt; (and stringify keys) so the
+    // `as Map&lt;String, dynamic&gt;` cast on queryParameters and the
+    // `requestData is Map&lt;String, dynamic&gt;` asFormData guard both still hold.
+    return value.map&lt;String, dynamic&gt;(
+      (k, v) =&gt; MapEntry(k.toString(), _normalizeArabicDigits(v)),
+    );
+  }
+  if (value is List) {
+    return value.map(_normalizeArabicDigits).toList();
+  }
+  return value;
+}</code></pre>
+      <p class="note">Verified: <em>“queryParameters reaches the network”</em> (query intact) and
+      <em>“request(asFormData:true) sends a multipart body”</em> (<code>multipart/form-data; boundary=…</code>) both pass.</p>
+    </div>
+  </div>
+
+  <!-- P4 -->
+  <div class="pcard">
+    <div class="head">
+      <div><h3>P4 · Non-JSON body misclassified as “no internet” <span class="applied">RESOLVED</span></h3>
+        <div class="sub">Scenario 4 &amp; 3 · <code>response_parser.dart</code></div></div>
+      <span class="sev sev-fixed">✅ FIXED</span>
+    </div>
+    <div class="body">
+      <div class="was">Was</div>
+      <p>A WAF/Cloudflare HTML page or a truncated body served with <code>Content-Type: application/json</code> made Dio’s
+      transformer throw a <code>FormatException</code> → <code>DioException(unknown)</code> → mapped to
+      <code>NetworkFailure</code>, hiding the real error behind a false “no internet.”</p>
+      <div class="lbl fix">Applied fix — classify the decode failure as a parse error</div>
+<pre><code>// in parseDioError's switch:
+DioExceptionType.connectionError =&gt; _classifyConnectionError(e),
+DioExceptionType.unknown =&gt; _classifyUnknown(e),          // split out
+
+/// A json-decode FormatException (HTML/garbage/truncated body under a JSON
+/// content-type) becomes a ParseFailure, not a misleading "no internet".
+/// A genuine transport problem (SocketException) stays a network failure.
+static AppException _classifyUnknown(DioException e) {
+  final inner = e.error;
+  if (inner is SocketException) return NetworkException(inner.message);
+  if (inner is FormatException) return const HtmlResponseException();
+  if (_looksLikeHtml(e.response?.data)) return const HtmlResponseException();
+  return NetworkException(e.message);
+}</code></pre>
+      <p class="note">Verified: <em>“HTML mislabelled as application/json → ParseFailure”</em> and
+      <em>“malformed JSON → ParseFailure”</em> both pass; the existing <code>text/html</code> cases still pass.</p>
+    </div>
+  </div>
+
+  <!-- P5 -->
+  <div class="pcard">
+    <div class="head">
+      <div><h3>P5 · Retried multipart reused single-use <code>FormData</code> <span class="applied">RESOLVED</span></h3>
+        <div class="sub">Scenario 7 · <code>auth_interceptor.dart</code></div></div>
+      <span class="sev sev-fixed">✅ FIXED</span>
+    </div>
+    <div class="body">
+      <div class="was">Was</div>
+      <p><code>_retry</code> re-issued the same <code>RequestOptions</code> whose <code>FormData</code> was already
+      finalised; re-reading it throws <code>StateError</code>, which the <code>catch</code> turned into a token-clearing
+      logout — losing the upload and the freshly-refreshed session.</p>
+      <div class="lbl fix">Applied fix — clone the single-use body before replay</div>
+<pre><code>Future&lt;Response&lt;dynamic&gt;&gt; _retry(RequestOptions req) {
+  req.extra[_retriedFlag] = true;
+  req.headers['Authorization'] = 'Bearer ${_storage.accessToken}';
+  // FormData is single-use; clone so the retried multipart body is rebuilt
+  // instead of throwing a StateError (which would silently log the user out).
+  final data = req.data;
+  if (data is FormData) {
+    req.data = data.clone();
+  }
+  return _dio.fetch(req);
+}</code></pre>
+      <p class="note">Verified: <em>“a 401’d multipart upload is retried with a rebuilt, non-empty body”</em> drives the
+      real <code>request(asFormData) → 401 → refresh → retry</code> path and asserts the retry body length &gt; 0.</p>
+    </div>
+  </div>
+
+  <!-- P6 -->
+  <div class="pcard">
+    <div class="head">
+      <div><h3>P6 · Offline replay had no idempotency key <span class="applied">RESOLVED</span></h3>
+        <div class="sub">Scenario 9 · <code>offline_queue_manager.dart</code></div></div>
+      <span class="sev sev-fixed">✅ FIXED</span>
+    </div>
+    <div class="body">
+      <div class="was">Was</div>
+      <p>Queued POST/PUT/PATCH/DELETE were replayed with no idempotency key; a reply lost after the server committed
+      would be re-sent, creating a duplicate (double charge / double sign-up).</p>
+      <div class="lbl fix">Applied fix — stamp the op’s stable UUID as an Idempotency-Key</div>
+<pre><code>Future&lt;void&gt; _runOne(QueuedOperation op) async {
+  // Stable across every retry of THIS op (op.id is a v4 UUID set at enqueue);
+  // a server that honours Idempotency-Key collapses the retried write.
+  final headers = &lt;String, dynamic&gt;{
+    ...?op.headers,
+    'Idempotency-Key': op.id,
+  };
+  try {
+    final res = await _dio.request&lt;dynamic&gt;(
+      op.endpoint,
+      data: op.body,
+      options: Options(method: op.method, headers: headers),
+    );
+    ...
+  }
+}</code></pre>
+      <p class="note">Verified: <em>“replayed non-idempotent op carries a stable Idempotency-Key”</em> asserts the replay
+      header equals <code>op.id</code>. (Requires a server that honours <code>Idempotency-Key</code> — the standard
+      pattern.) With P1 fixed, a 401 during replay now refreshes cleanly instead of hanging the sync loop.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="tests">5 · Test results <span class="sub">(after fixes)</span></h2>
+  <p class="sub">File: <code>test/core/network/dio_network_audit_test.dart</code> — 36 tests, mocked adapters only, no real
+    network. <span class="hl-green">36 passed / 0 failed.</span> The bug-proving tests from the first pass were rewritten
+    as real-path regression tests that now exercise the fixed code.</p>
+  <table>
+    <thead><tr><th>#</th><th>Scenario</th><th>Test</th><th style="width:80px">Result</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Timeouts</td><td>connect / send / receive timeout → TimeoutFailure (3)</td><td class="center"><span class="pill p-pass">PASS ×3</span></td></tr>
+      <tr><td>2</td><td>Connectivity</td><td>connectionError(SocketException) → NetworkFailure</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>2</td><td>Connectivity</td><td>raw SocketException caught → NetworkFailure</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>3</td><td>Status codes</td><td>400/401/403/404/409/422/429/500/502/503 → correct Failure (10)</td><td class="center"><span class="pill p-pass">PASS ×10</span></td></tr>
+      <tr><td>3</td><td>Status codes</td><td>(http_mock_adapter / DioAdapter) 404 → NotFoundFailure</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>4</td><td>HTML-not-JSON</td><td>HTML (text/html) on 200 / 502 → ParseFailure (2)</td><td class="center"><span class="pill p-pass">PASS ×2</span></td></tr>
+      <tr><td>4</td><td>HTML-not-JSON</td><td>HTML mislabelled <code>application/json</code> → ParseFailure</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>4</td><td>HTML-not-JSON</td><td>malformed JSON (<code>application/json</code>) → ParseFailure</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>5</td><td>Refresh</td><td>401 without refresh token → UnauthorizedFailure (no hang)</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>5</td><td>Refresh</td><td>401 with refresh token → one refresh + retry with new token</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>5</td><td>Refresh</td><td>concurrent 401s → exactly one refresh (single-flight)</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>6</td><td>skipAuth</td><td>skipAuth:true omits Authorization; without it the Bearer is attached (2)</td><td class="center"><span class="pill p-pass">PASS ×2</span></td></tr>
+      <tr><td>7</td><td>Query/body/multipart</td><td>queryParameters (default normalize) reaches the network</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>7</td><td>Query/body/multipart</td><td>(control) queryParameters with normalize:false</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>7</td><td>Query/body/multipart</td><td>request(asFormData:true) sends a multipart body</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>7</td><td>Query/body/multipart</td><td>(control) asFormData normalize:false → multipart + boundary</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>7</td><td>Query/body/multipart</td><td>a 401’d multipart upload is retried with a rebuilt, non-empty body</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>8</td><td>Cancellation</td><td>cancelled request → CancelledFailure; cancel one ≠ cancel another (2)</td><td class="center"><span class="pill p-pass">PASS ×2</span></td></tr>
+      <tr><td>9</td><td>Offline queue</td><td>offline op replayed exactly once then removed</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>9</td><td>Offline queue</td><td>replayed non-idempotent op carries a stable Idempotency-Key</td><td class="center"><span class="pill p-pass">PASS</span></td></tr>
+      <tr><td>10</td><td>Interceptor structure</td><td>missing-handler interceptor hangs (guard); well-behaved one forwards (2)</td><td class="center"><span class="pill p-pass">PASS ×2</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="lbl">Raw <code>flutter test</code> summary</div>
+<pre><code>$ flutter test test/core/network/dio_network_audit_test.dart
+00:02 +36: All tests passed!
+
+$ flutter test            # whole project
+00:03 +86: All tests passed!
+
+$ flutter analyze
+No issues found!</code></pre>
+
+  <!-- ============================================================ -->
+  <h2 id="files">6 · Files reviewed &amp; changed</h2>
+  <p class="sub">Changed (the fix): 4 files. Reviewed: 23 files.</p>
+  <p>
+    <span class="filechip" style="border-color:var(--green-line);color:#5ed27a">✎ interceptors/auth_interceptor.dart</span>
+    <span class="filechip" style="border-color:var(--green-line);color:#5ed27a">✎ base/base_remote_source.dart</span>
+    <span class="filechip" style="border-color:var(--green-line);color:#5ed27a">✎ parser/response_parser.dart</span>
+    <span class="filechip" style="border-color:var(--green-line);color:#5ed27a">✎ offline/offline_queue_manager.dart</span>
+  </p>
+  <ul class="files">
+    <li>lib/src/core/network/dio_client.dart</li>
+    <li>lib/src/core/network/api_endpoints.dart</li>
+    <li>lib/src/core/network/http_method.dart</li>
+    <li>lib/src/core/network/base/base_remote_source.dart ✎</li>
+    <li>lib/src/core/network/auth/token_storage.dart</li>
+    <li>lib/src/core/network/options/request_extra.dart</li>
+    <li>lib/src/core/network/interceptors/auth_interceptor.dart ✎</li>
+    <li>lib/src/core/network/interceptors/retry_interceptor.dart</li>
+    <li>lib/src/core/network/interceptors/locale_interceptor.dart</li>
+    <li>lib/src/core/network/interceptors/cache_interceptor.dart</li>
+    <li>lib/src/core/network/interceptors/logging_interceptor.dart</li>
+    <li>lib/src/core/network/parser/response_parser.dart ✎</li>
+    <li>lib/src/core/network/parser/status_code_handler.dart</li>
+    <li>lib/src/core/network/error/failures.dart</li>
+    <li>lib/src/core/network/exceptions/app_exception.dart</li>
+    <li>lib/src/core/network/cache/cache_config.dart</li>
+    <li>lib/src/core/network/cancel/request_cancellation_manager.dart</li>
+    <li>lib/src/core/network/network_info.dart</li>
+    <li>lib/src/core/network/offline/offline_queue_manager.dart ✎</li>
+    <li>lib/src/core/network/offline/queued_operation.dart</li>
+    <li>lib/src/core/network/cubits/connectivity_cubit.dart</li>
+    <li>lib/src/core/network/cubits/offline_queue_cubit.dart</li>
+    <li>lib/src/core/shared/helpers/cache_service.dart</li>
+  </ul>
+
+  <div class="foot">
+    Re-audited after applying fixes · all responses mocked, no live network contacted · suite 36/36, project 86/86,
+    analyze clean · Report: <code>reports/dio_audit_report.html</code>.
+  </div>
+
+</div>
+</body>
+</html>

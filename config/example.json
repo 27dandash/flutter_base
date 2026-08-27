@@ -1,0 +1,5 @@
+{
+  "API_BASE_URL": "https://api.example.com/api/v1/",
+  "PHP_RESPONSE_MODE": "true",
+  "TLS_SHA256_PINS": "PRIMARY_64_HEX_SHA256,BACKUP_64_HEX_SHA256"
+}

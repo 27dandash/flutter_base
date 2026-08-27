@@ -1,0 +1,4 @@
+{
+  "template": "Download the staging Android configuration from Firebase Console.",
+  "application_id": "com.flutter.newproject.remoteconfig.staging"
+}

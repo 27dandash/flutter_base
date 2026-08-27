@@ -1,0 +1,139 @@
+name: flutter_base
+description: "Reusable production Flutter foundation with optional integrations."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.13.1 <4.0.0"
+  flutter: ">=3.47.1"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+#--------------------- Networks -----------------------
+  dio: ^5.11.0
+  crypto: ^3.0.6 # SHA-256 for opt-in TLS certificate pinning (DioClient)
+  cryptography: ^2.9.0 # AES-256-GCM authenticated offline-queue records
+
+#--------------------- Caching (Dio) + Storage (Hive CE) -----------------------
+  dio_cache_interceptor: ^3.5.0
+  # MemCacheStore (built-in to dio_cache_interceptor) is used as the cache
+  # backend — no extra package needed. Persistent cache can be added later
+  # by swapping the store in `cache_config.dart`.
+  hive_ce: ^2.13.1
+  hive_ce_flutter: ^2.3.2
+
+#--------------------- Connectivity -----------------------
+  connectivity_plus: ^7.3.1
+
+#--------------------- Localization & Internationalization -----------------------
+  intl: 0.20.3
+  easy_localization: ^3.0.8
+  # easy_logger dropped — it only existed to silence easy_localization's
+  # debug-mode info chatter. Not worth a transitive dependency for that.
+
+#--------------------- Tools -----------------------
+  image_picker: ^1.2.3
+  # 12.x removes Apache Tika from Android, supports AGP 9/Built-in Kotlin, and
+  # aligns the transitive win32 graph with optional Maps/geolocator.
+  file_picker: ^12.1.1
+  # 12.x requires TOCropViewController 3.x, which conflicts with file_picker's
+  # SwiftPM graph. 11.x still compiles against Android 36 and shares 2.x.
+  image_cropper: ^11.0.0
+  flutter_html: ^3.0.0
+  video_player: ^2.14.0
+  cached_network_image: ^3.4.1
+  flutter_screenutil: ^5.9.3
+  # 11.x requires Android compileSdk 37; stay on the latest compatible 10.x
+  # while Flutter stable targets Android API 36.
+  flutter_secure_storage: ^10.3.1
+
+#--------------------- State Management & Utilities -----------------------
+  equatable: ^2.1.0
+  flutter_bloc: ^9.1.1
+  get_it: ^9.2.1
+  injectable: ^3.0.0
+
+#--------------------- UI & Animations -----------------------
+  # flutter_spinkit dropped — Material 3 CircularProgressIndicator covers
+  # 100% of our use-cases. carousel_slider dropped — replaced by PageView.
+  # pinput dropped — no current usage; build a native OTP widget when needed.
+  flutter_svg: ^2.1.0
+  lottie: ^3.5.1
+  flutter_animate: ^4.5.2
+  # Skeleton shimmer used by PaginatedListWidget for first-page loading.
+  skeletonizer: ^2.1.0
+
+#--------------------- Storage & Data -----------------------
+  # SecureStorage (flutter_secure_storage) is the only at-rest store —
+  # everything sensitive (tokens, user payload) is encrypted on disk.
+  # shared_preferences was intentionally dropped.
+
+#--------------------- Sharing & Links -----------------------
+  share_plus: ^13.3.0
+  url_launcher: ^6.3.0
+
+#--------------------- Reactive & Utils -----------------------
+  rxdart: ^0.28.0
+  uuid: ^4.6.0
+  dartz: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  image_picker_platform_interface: ^2.11.1
+  mocktail: ^1.0.4
+  bloc_test: ^10.0.0
+  build_runner: ^2.4.13
+  flutter_gen_runner: ^5.4.0
+  injectable_generator: ^3.0.0
+  hive_ce_generator: ^1.10.0
+  flutter_lints: ^6.0.0
+  http_mock_adapter: ^0.6.1
+
+flutter:
+  uses-material-design: true
+
+  # Keep this list explicit: declaring whole template directories silently
+  # ships unused artwork in every flavor.
+  assets:
+    - assets/lottie/error_1.json
+    - assets/lottie/not_found_2.json
+    - assets/lottie/successfull_order.json
+    - assets/lottie/visit.json
+    - assets/svg/base_svg/arrow_back.svg
+    - assets/svg/base_svg/arrow_down.svg
+    - assets/svg/base_svg/drop_down_close.svg
+    - assets/svg/base_svg/search.svg
+    - assets/translations/ar.json
+    - assets/translations/en.json
+
+  fonts:
+    - family: Beiruti
+      fonts:
+        - asset: assets/fonts/Beiruti-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Beiruti-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Beiruti-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Beiruti-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Beiruti-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Beiruti-Bold.ttf
+          weight: 700
+
+flutter_gen:
+  output: lib/src/config/res/
+  line_length: 80
+  integrations:
+    lottie: true
+    flutter_svg: true
+  assets:
+    enabled: true
+    outputs:
+      class_name: AppAssets

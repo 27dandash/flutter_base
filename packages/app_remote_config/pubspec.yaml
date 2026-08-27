@@ -1,0 +1,19 @@
+name: app_remote_config
+description: Optional Firebase Remote Config client for the Flutter base.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.13.1 <4.0.0"
+  flutter: ">=3.47.1"
+
+dependencies:
+  firebase_core: ^4.14.0
+  firebase_remote_config: ^6.6.0
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

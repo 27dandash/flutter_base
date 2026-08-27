@@ -1,0 +1,3 @@
+interface:
+  display_name: "Flutter Base Production"
+  short_description: "Maintain the reusable production Flutter foundation"

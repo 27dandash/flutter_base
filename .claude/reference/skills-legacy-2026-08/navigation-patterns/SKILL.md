@@ -1,0 +1,272 @@
+---
+name: navigation-patterns
+description: Navigation patterns for Flutter_Base — Go.to() with arguments, back with result, refresh parent screen, named routes, and tab navigation.
+---
+
+# Skill: Navigation Patterns — Flutter_Base
+
+## When to Use
+
+- عند الانتقال بين شاشات
+- عند تمرير بيانات (arguments) لشاشة جديدة
+- عند العودة بنتيجة (back with result)
+- عند الحاجة لتحديث الشاشة السابقة بعد action
+
+---
+
+## Navigation API — Quick Reference
+
+| Action | Code | Notes |
+|--------|------|-------|
+| Push new screen | `Go.to(ScreenWidget())` | Default: slide transition |
+| Push with transition | `Go.to(Screen(), transition: TransitionType.fade)` | fade, scale, slide, cupertino |
+| Replace current | `Go.off(Screen())` | Removes current from stack |
+| Clear all + push | `Go.offAll(Screen())` | Login → Home flow |
+| Go back | `Go.back()` | Simple pop |
+| Go back with result | `Go.back(result)` | Returns data to previous screen |
+| Back to root | `Go.backToInitial()` | Pops to first route |
+| Named route | `Go.toNamed(NamedRoutes.home)` | For registered routes |
+
+---
+
+## Pattern 1: Simple Navigation (No Arguments)
+
+```dart
+// Navigate to detail screen
+GestureDetector(
+  onTap: () => Go.to(const AboutScreen()),
+  child: const _SettingsItem(title: LocaleKeys.about),
+)
+```
+
+---
+
+## Pattern 2: Navigation with Arguments
+
+> **تمرير entity أو id للشاشة التالية.**
+
+```dart
+// From list → detail (pass entity)
+_ProductCard(
+  product: product,
+  onTap: () => Go.to(ProductDetailScreen(product: product)),
+)
+
+// Detail screen receives it via constructor
+class ProductDetailScreen extends StatelessWidget {
+  const ProductDetailScreen({super.key, required this.product});
+  final ProductEntity product;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => injector<ProductDetailCubit>()..fetchProduct(product.id),
+      child: DefaultScaffold(
+        title: product.name,  // Show name immediately while loading full details
+        body: _ProductDetailBody(product: product),
+      ),
+    );
+  }
+}
+```
+
+### What to pass as argument:
+
+| Scenario | Pass | Why |
+|----------|------|-----|
+| List → Detail | Full entity OR just ID | Entity = instant title/image. ID only = lighter |
+| List → Edit | Full entity | Pre-fill form fields immediately |
+| Any → Create | Nothing (or parent ID) | New item, empty form |
+| Filter → Result | Filter params object | Structured data |
+
+---
+
+## Pattern 3: Back with Result (CRITICAL)
+
+> **لما شاشة تعمل action وتحتاج ترجع بالنتيجة للشاشة السابقة.**
+
+### Scenario: Create screen → returns new item to list
+
+```dart
+// 1. CALLER: Navigate and await result
+Future<void> _goToCreate(BuildContext context) async {
+  final newProduct = await Go.to<ProductEntity>(const CreateProductScreen());
+  if (newProduct != null) {
+    // Update list locally — NEVER re-fetch
+    context.read<ProductsCubit>().addProduct(newProduct);
+  }
+}
+
+// 2. DESTINATION: Return result on success
+// Inside CreateProductScreen's BlocListener:
+BlocListener<CreateProductCubit, AsyncState<ProductEntity>>(
+  listener: (context, state) {
+    if (state is AsyncSuccess && state.data != null) {
+      Go.back(state.data);  // ← Return the new entity to caller
+    }
+  },
+  child: /* form body */,
+)
+
+// 3. CUBIT: Local update method in list cubit
+class ProductsCubit extends AsyncCubit<List<ProductEntity>> {
+  void addProduct(ProductEntity product) {
+    setData([product, ...(lastData ?? const [])]);
+  }
+}
+```
+
+### Scenario: Edit screen → returns updated item
+
+```dart
+// CALLER
+Future<void> _goToEdit(BuildContext context, ProductEntity product) async {
+  final updated = await Go.to<ProductEntity>(EditProductScreen(product: product));
+  if (updated != null) {
+    context.read<ProductsCubit>().updateProduct(updated);
+  }
+}
+
+// DESTINATION: BlocListener
+listener: (context, state) {
+  if (state is AsyncSuccess && state.data != null) {
+    Go.back(state.data);  // ← Return updated entity
+  }
+},
+
+// CUBIT: Local update
+void updateProduct(ProductEntity updated) {
+  setData((lastData ?? const []).map((e) => e.id == updated.id ? updated : e).toList());
+}
+```
+
+### Scenario: Delete from detail → notify list
+
+```dart
+// DETAIL SCREEN: After delete success
+BlocListener<DeleteProductCubit, AsyncState<BaseModel?>>(
+  listener: (context, state) {
+    if (state is AsyncSuccess) {
+      Go.back(true);  // ← Signal "item was deleted"
+    }
+  },
+)
+
+// CALLER: Handle delete signal
+Future<void> _goToDetail(BuildContext context, ProductEntity product) async {
+  final wasDeleted = await Go.to<bool>(ProductDetailScreen(product: product));
+  if (wasDeleted == true) {
+    context.read<ProductsCubit>().removeProduct(product.id);
+  }
+}
+
+// CUBIT
+void removeProduct(String id) {
+  setData((lastData ?? const []).where((e) => e.id != id).toList());
+}
+```
+
+---
+
+## Pattern 4: Refresh Parent Without Back-with-Result
+
+> **بديل عن back with result لما الـ cubit مشترك بين الشاشات (مثلاً detail بيعدل على نفس الـ cubit).**
+> **استخدم ده بس لو الـ cubit فعلاً shared عبر BlocProvider.value.**
+
+```dart
+// Parent provides cubit
+BlocProvider(
+  create: (_) => injector<ProductsCubit>()..fetchProducts(),
+  child: const ProductsScreen(),
+)
+
+// Child accesses SAME cubit instance via context
+// (only works if child is under same BlocProvider tree)
+context.read<ProductsCubit>().removeProduct(id);
+Go.back();
+```
+
+**Warning:** This only works if both screens share the same BlocProvider ancestor.
+For separate screens (pushed via Go.to), use Pattern 3 (back with result).
+
+---
+
+## Pattern 5: Tab Navigation (BottomNavBar)
+
+```dart
+// Tab screens are NOT pushed — they're children of IndexedStack/PageView
+class HomeTabsScreen extends StatefulWidget {
+  @override
+  State<HomeTabsScreen> createState() => _HomeTabsScreenState();
+}
+
+class _HomeTabsScreenState extends State<HomeTabsScreen> {
+  int _currentIndex = 0;
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    OrdersScreen(),
+    ProfileScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: [/* ... */],
+      ),
+    );
+  }
+}
+```
+
+**Tab navigation rules:**
+- Tab screens → `IndexedStack` (keeps state alive)
+- Tab screens cubits → provide ABOVE the IndexedStack, in MultiBlocProvider
+- Inner navigation (from tab screen) → normal `Go.to()`
+
+---
+
+## Pattern 6: Replace Screen (Auth Flow)
+
+```dart
+// Login success → replace with Home (user can't go back to login)
+BlocListener<LoginCubit, AsyncState<UserEntity>>(
+  listener: (context, state) {
+    if (state is AsyncSuccess) {
+      Go.offAll(const HomeTabsScreen());  // ← Clears entire stack
+    }
+  },
+)
+
+// Logout → replace with Login
+Go.offAll(const LoginScreen());
+```
+
+---
+
+## Transition Types
+
+| Type | When to use |
+|------|-------------|
+| `TransitionType.slide` | Default — most navigations |
+| `TransitionType.fade` | Detail screens, image preview |
+| `TransitionType.scale` | Dialogs that open as full screen |
+| `TransitionType.cupertino` | iOS-style back swipe needed |
+
+---
+
+## Navigation Checklist
+
+- [ ] Arguments passed via constructor (not global state)
+- [ ] Back-with-result used for create/edit/delete feedback
+- [ ] Parent screen updates list locally (never re-fetches)
+- [ ] `Go.offAll` for auth transitions (login/logout)
+- [ ] Tab screens use `IndexedStack` (not push/pop)
+- [ ] No `Navigator.push` or `Navigator.pop` — always `Go.to()` / `Go.back()`
+- [ ] Transition type matches UX (slide for lists, fade for details)

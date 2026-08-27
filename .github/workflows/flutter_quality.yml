@@ -1,0 +1,122 @@
+name: Flutter quality gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-test-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Check formatting of changed Dart files
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="origin/${{ github.base_ref }}"
+          else
+            base="HEAD^"
+          fi
+          mapfile -t files < <(git diff --name-only --diff-filter=ACM "$base"...HEAD -- '*.dart')
+          if ((${#files[@]})); then
+            dart format --output=none --set-exit-if-changed "${files[@]}"
+          fi
+      - run: flutter analyze
+      - run: flutter test
+      - name: Exercise the inverse PHP-envelope branch
+        run: flutter test --dart-define=PHP_RESPONSE_MODE=false test/core/network/php/php_envelope_test.dart
+      - run: flutter build apk --debug --flavor development -t lib/main_development.dart
+      - run: flutter build apk --debug --flavor staging -t lib/main_staging.dart
+      - run: flutter build apk --debug --flavor production -t lib/main_production.dart
+      - name: Build ARM64 release and retain Dart symbols
+        run: >-
+          flutter build apk --release --flavor production
+          -t lib/main_production.dart --target-platform android-arm64
+          --split-debug-info=build/symbols/production
+      - name: Build Play bundle and retain Dart symbols
+        run: >-
+          flutter build appbundle --release --flavor production
+          -t lib/main_production.dart
+          --split-debug-info=build/symbols/production
+      - run: scripts/check_size_budget.sh
+      - name: Build direct-distribution ABI splits
+        run: >-
+          flutter build apk --release --flavor production
+          -t lib/main_production.dart --split-per-abi
+          --split-debug-info=build/symbols/production
+      - name: Archive release artifacts, mappings, and symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-android-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/productionRelease/*.aab
+            build/app/outputs/mapping/productionRelease/**
+            build/app/outputs/native-debug-symbols/productionRelease/**
+            build/symbols/production/**
+
+  ios-simulator:
+    runs-on: macos-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --simulator --flavor development -t lib/main_development.dart
+      - run: flutter build ios --simulator --flavor staging -t lib/main_staging.dart
+      - run: flutter build ios --simulator --flavor production -t lib/main_production.dart
+
+  optional-packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - app_notifications
+          - app_remote_config
+          - app_webview
+          - app_maps
+          - app_socket
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Prove root and optional package resolve together
+        run: scripts/check_optional_resolution.sh ${{ matrix.package }}
+      - run: flutter pub get
+        working-directory: packages/${{ matrix.package }}
+      - run: flutter analyze
+        working-directory: packages/${{ matrix.package }}
+      - name: Run package tests when present
+        shell: bash
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          if [[ -d test ]]; then
+            flutter test
+          else
+            echo "No automated tests in this package."
+          fi
