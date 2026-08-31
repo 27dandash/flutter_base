@@ -14,7 +14,15 @@ fail() {
   fail "missing AUTHORITATIVE_SPEC.md"
 [[ -f "$PROJECT_ROOT/docs/REUSABLE_COMPONENT_CATALOG.md" ]] ||
   fail "missing canonical component catalog"
-for concept in 'Android and iOS' 'native splash' 'Remote Config' 'APNs'; do
+for concept in \
+  'Android and iOS' \
+  'native splash' \
+  'Remote Config' \
+  'APNs' \
+  'temporary Figma/MCP asset' \
+  'reference-frame size' \
+  'saved response examples' \
+  'empty and non-empty responses'; do
   grep -Fq "$concept" "$PROMPT_ROOT/AUTHORITATIVE_SPEC.md" ||
     fail "authoritative prompt spec is missing concept: $concept"
 done

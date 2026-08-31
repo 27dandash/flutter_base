@@ -230,6 +230,8 @@ API collection: `{{API_COLLECTION_URL}}`. Backend docs: `{{BACKEND_DOCUMENTATION
 ## 38. Documentation
 
 Current architecture, catalog, release, QA, size, and prompts are under `docs/`.
+The cross-project evidence ledger and recurring-failure adoption decisions are
+in `docs/CROSS_PROJECT_CODEX_HISTORY_AUDIT_2026-08-31.md`.
 The identity/native-parity closeout is
 `docs/reports/PROJECT_IDENTITY_MIGRATION_REPORT.md`. Historical reports retain
 original measurements/paths when clearly labeled as evidence.

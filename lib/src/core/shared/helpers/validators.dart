@@ -86,7 +86,7 @@ class Validators {
       return LocaleKeys.scripInjectionValidate;
     }
     // Strip spaces and dashes before validating
-    final cleaned = value.replaceAll(RegExp(r'[\s\-]'), '');
+    final cleaned = value.toEnglishNumbers().replaceAll(RegExp(r'[\s\-]'), '');
     // Accept: 05XXXXXXXX, 5XXXXXXXX, 9665XXXXXXXX, +9665XXXXXXXX
     if (!RegExp(r'^(\+?966|0)?5\d{8}$').hasMatch(cleaned)) {
       return LocaleKeys.phoneValidation;
@@ -134,7 +134,9 @@ class Validators {
     return null;
   }
 
-  /// Saudi VAT number: 15 digits.
+  /// Generic VAT/tax identifier represented by exactly 15 digits.
+  ///
+  /// Use [validateSaudiVat] when the Saudi `3...3` structure is required.
   static String? validateVat(String? value, {String? fieldTitle}) {
     if (value == null || value.trim().isEmpty) {
       return fieldTitle == null
@@ -142,6 +144,24 @@ class Validators {
           : '${LocaleKeys.filedValidation} $fieldTitle';
     }
     if (!RegExp(r'^\d{15}$').hasMatch(value.trim())) {
+      return LocaleKeys.validatorInvalidVat;
+    }
+    return null;
+  }
+
+  /// Saudi VAT number: 15 digits, beginning and ending with `3`.
+  ///
+  /// Arabic-Indic digits and surrounding whitespace are normalized before
+  /// validation. Backend-specific tax rules still belong to the consuming
+  /// application.
+  static String? validateSaudiVat(String? value, {String? fieldTitle}) {
+    if (value == null || value.trim().isEmpty) {
+      return fieldTitle == null
+          ? LocaleKeys.fillField
+          : '${LocaleKeys.filedValidation} $fieldTitle';
+    }
+    final clean = value.toEnglishNumbers().trim();
+    if (!RegExp(r'^3\d{13}3$').hasMatch(clean)) {
       return LocaleKeys.validatorInvalidVat;
     }
     return null;

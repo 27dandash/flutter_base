@@ -28,6 +28,11 @@ void main() {
 
     test('Saudi identifiers and formatted phone values are validated', () {
       expect(Validators.validateSaudiPhone('+966 50-123-4567'), isNull);
+      expect(Validators.validateSaudiPhone('٠٥٠ ١٢٣ ٤٥٦٧'), isNull);
+      expect(
+        Validators.validateSaudiPhone('٠٤٠ ١٢٣ ٤٥٦٧'),
+        LocaleKeys.phoneValidation,
+      );
       expect(Validators.validateNationalId('1234567890'), isNull);
       expect(Validators.validateIban('SA12 3456 7890 1234 5678 9012'), isNull);
       expect(
@@ -35,6 +40,18 @@ void main() {
         LocaleKeys.validatorInvalidNid,
       );
     });
+
+    test(
+      'Saudi VAT structure is opt-in and preserves generic VAT behavior',
+      () {
+        expect(Validators.validateVat('123456789012345'), isNull);
+        expect(Validators.validateSaudiVat('٣١٢٣٤٥٦٧٨٩٠١٢٣٣'), isNull);
+        expect(
+          Validators.validateSaudiVat('123456789012345'),
+          LocaleKeys.validatorInvalidVat,
+        );
+      },
+    );
 
     test('price supports Arabic digits and a maximum', () {
       expect(Validators.validatePrice('١٢٥٫٥٠'), isNull);

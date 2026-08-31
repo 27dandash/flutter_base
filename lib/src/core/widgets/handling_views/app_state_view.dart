@@ -152,7 +152,14 @@ class AppStateView extends StatelessWidget {
     if (status == AppViewStatus.loading) {
       final placeholder = skeleton;
       if (placeholder != null) {
-        return Skeletonizer(enabled: true, child: placeholder);
+        return Semantics(
+          container: true,
+          liveRegion: true,
+          label: semanticLabel ?? message,
+          child: ExcludeSemantics(
+            child: Skeletonizer(enabled: true, child: placeholder),
+          ),
+        );
       }
       return Semantics(
         liveRegion: true,

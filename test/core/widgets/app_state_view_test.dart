@@ -126,6 +126,23 @@ void main() {
     expect(find.bySemanticsLabel('Loading safely'), findsOneWidget);
   });
 
+  testWidgets('skeleton exposes one loading announcement', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        const AppStateView.loading(
+          message: 'Loading results',
+          skeleton: Column(
+            children: [Text('placeholder one'), Text('placeholder two')],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Loading results'), findsOneWidget);
+    expect(find.bySemanticsLabel('placeholder one'), findsNothing);
+    expect(find.bySemanticsLabel('placeholder two'), findsNothing);
+  });
+
   testWidgets('legacy empty and error views delegate to AppStateView', (
     tester,
   ) async {

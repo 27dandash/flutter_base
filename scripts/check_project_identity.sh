@@ -86,6 +86,7 @@ maps_android=packages/app_maps/example/android/app/build.gradle.kts
 maps_manifest=packages/app_maps/example/android/app/src/main/AndroidManifest.xml
 maps_properties=packages/app_maps/example/android/maps.properties.example
 maps_ios=packages/app_maps/example/ios
+require_text "$maps_android" 'id\("kotlin-android"\)'
 require_text "$maps_android" 'MAPS_API_KEY_'
 require_text "$maps_properties" 'MAPS_API_KEY_DEVELOPMENT'
 require_text "$maps_properties" 'MAPS_API_KEY_STAGING'
@@ -99,6 +100,7 @@ done
 
 firebase_android=packages/app_remote_config/example/android/app
 firebase_ios=packages/app_remote_config/example/ios
+require_text "$firebase_android/build.gradle.kts" 'id\("kotlin-android"\)'
 for flavor in development staging production; do
   require_file "$firebase_android/src/$flavor/google-services.json.example"
   require_file "$firebase_ios/Runner/Firebase/$flavor/GoogleService-Info.plist.example"

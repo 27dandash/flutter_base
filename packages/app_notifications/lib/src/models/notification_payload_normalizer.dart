@@ -1,0 +1,43 @@
+import 'dart:convert';
+
+/// Flattens an optional nested notification `data` object without throwing.
+///
+/// FCM adapters and backend gateways may deliver product data as a map, a JSON
+/// object string or already-flat keys. Nested keys take precedence because
+/// they are the actual application payload. When both layers provide `id`, the
+/// outer transport identifier is retained as `notification_id`.
+Map<String, dynamic> normalizeNotificationPayload(Map<String, dynamic> source) {
+  final normalized = Map<String, dynamic>.from(source);
+  final nested = _nestedData(source['data']);
+  if (nested == null) return normalized;
+
+  final transportId = normalized['id'];
+  normalized.addAll(nested);
+  if (transportId != null && nested.containsKey('id')) {
+    normalized.putIfAbsent('notification_id', () => transportId);
+  }
+  return normalized;
+}
+
+Map<String, dynamic>? _nestedData(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return Map<String, dynamic>.from(value);
+  }
+  if (value is Map) {
+    try {
+      return Map<String, dynamic>.from(value);
+    } on Object {
+      return null;
+    }
+  }
+  if (value is! String) return null;
+
+  final text = value.trim();
+  if (!text.startsWith('{') || !text.endsWith('}')) return null;
+  try {
+    final decoded = jsonDecode(text);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+  } on FormatException {
+    return null;
+  }
+}

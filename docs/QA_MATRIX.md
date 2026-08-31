@@ -8,7 +8,7 @@ is `Blocked`, not inferred from unit tests.
 
 | Suite | Result | Scope |
 | --- | --- | --- |
-| Root `flutter test` (default PHP mode) | 226 passed, 2 conditional skips | network/auth/retry/cache/parser/offline/TLS/log redaction, startup, session/routing, architecture/optional boundaries, assets/translations, async/pagination concurrency, canonical and compatibility media/state/action/navigation widgets, theme/RTL/routes/accessibility |
+| Root `flutter test` (default PHP mode) | 227 passed, 2 conditional skips | network/auth/retry/cache/parser/offline/TLS/log redaction, startup, session/routing, architecture/optional boundaries, assets/translations, async/pagination concurrency, canonical and compatibility media/state/action/navigation widgets, theme/RTL/routes/accessibility |
 | PHP inverse command | 15 passed, 3 skipped | explicitly executes `PHP_RESPONSE_MODE=false` behavior |
 | `app_notifications` | 9 passed | IDs vs token, permission, timeout, dedupe, refresh, retry, logout/switch |
 | `app_remote_config` | 16 passed | backward-compatible API, injection, lazy disablement, defaults, environment policies, bounded initialization/fetch/activation, concurrency, typed fallbacks, retry, offline-safe errors and disposal |
@@ -16,16 +16,15 @@ is `Blocked`, not inferred from unit tests.
 | `app_maps` | 7 passed | config, fallback, permissions/services, timeout, selection/lookup, accessible missing-key page state |
 | `app_socket` | 6 passed | idempotency/listeners, network, auth change, logout, reconnect bounds |
 
-The final root coverage snapshot is 2,470 of 4,069 instrumented lines
-(60.70%). The focused `test/core/widgets` snapshot is 1,476 of 3,584 imported
-lines (41.18%); the broader denominator now includes the tested legacy scaffold
-dependency graph. `AppMedia` is 66.09%, `AppMediaViewerPage` and the legacy
+The final root coverage snapshot is 2,474 of 4,072 instrumented lines
+(60.76%). The focused `test/core/widgets` snapshot is 1,481 of 3,309 imported
+lines (44.76%). `AppMedia` is 66.09%, `AppMediaViewerPage` and the legacy
 `ImageView` adapter are 100%, `CustomAnimatedButton` is 92.50%, and
-`AppStateView` is 89.58%; `DefaultScaffold` is 84.62%. No
+`AppStateView` is 92.16%; `DefaultScaffold` is 84.62%. No
 trustworthy older LCOV artifact exists, so a numeric
 non-regression comparison is not claimed. Coverage is a map for future product
 paths, not a substitute for the behavior, boundary and security assertions.
-The 61 focused widget tests are included within the 226 root tests; they are not
+The 62 focused widget tests are included within the 227 root tests; they are not
 added to the root total.
 
 The invalid “187 root” report and the current manifest are reconciled in
@@ -58,6 +57,7 @@ other.
 | safe canonical media lifecycle and errors | `app_media_test.dart`, `legacy_widget_regressions_test.dart` | asset/file/network/video contracts, safe fallback and viewer policy | codec failures and lifecycle on OEM devices | Widget lifecycle passed; native media device QA remains |
 | legacy compatibility paths remain safe | media/state/legacy regression widget tests | canonical viewer/state delegation, async disposal, true disabled actions, contextual Back/Close | consuming-project migration smoke | Compatibility tests passed; external consumers require their own compile gate |
 | injectable image picking | `app_image_picker_field_test.dart`, `plugin_app_image_picker_service_test.dart` | cancellation, permission, lost-result recovery, size/count, replace/remove, duplicate request and disposal | camera/gallery/process death/OEM fallback | Contract/plugin adapter passed; physical workflow remains |
+| notification payload transport | optional `notification_payload_test.dart` | flat map, nested map, JSON object string, malformed data, ID collision, Arabic/English selection and unknown product event fallback | real FCM foreground/background/terminated delivery | Parser contract automated; backend event/target-ID routing remains application-specific |
 | canonical page shell and Back | `app_page_shell_test.dart` | normal/sliver/contextual Back, RTL/theme/text-scale hosts | predictive Back gesture on supported Android | Framework behavior passed; gesture QA remains |
 | pagination presentation | `paginated_list_widget_test.dart`, state tests | scroll load-more, refresh, empty and inline failure/retry | long-list jank and screen reader | Widget/state behavior passed; profile QA remains |
 | WebView allowlist/callback lifecycle | WebView package tests | independent analyze | real TLS/network/download/external apps | Policy passed; native live blocked |
@@ -77,8 +77,8 @@ other.
 | Platform/artifact | Development | Staging | Production |
 | --- | --- | --- | --- |
 | Android debug APK | Passed | Passed | Passed |
-| Android release APK | N/A | N/A | Last audited pre-identity binary baseline passed universal, ARM64 target and 3 ABI splits; post-identity rebuild blocked by local disk capacity |
-| Android AAB | N/A | N/A | Last audited pre-identity binary baseline passed with external Dart symbols; post-identity rebuild blocked by local disk capacity |
+| Android release APK | N/A | N/A | Current Universal plus ARM32, ARM64 and x86_64 splits passed with external Dart symbols |
+| Android AAB | N/A | N/A | Current production AAB passed with external Dart/native symbols and R8 mapping retained |
 | Manifest merge | Passed | Passed | Passed debug + release |
 | iOS simulator | Passed | Passed | Passed |
 | Xcode scheme/config | Passed | Passed | Passed |
@@ -86,19 +86,20 @@ other.
 
 Android merged package IDs were `.dev`, `.staging`, and production base. All
 merged roots contain only Internet, network-state, and wake-lock permissions.
-The production iOS simulator artifact is 198,116 KiB allocated and contains bundle ID
+The production iOS simulator artifact is 198,164 KiB allocated and contains bundle ID
 `com.flutter.newproject`, display name `Flutter Base`, minimum iOS 15.0, and
 camera/photo descriptions. Placeholder identities are not release approval.
 
-The earlier widget-hardening bundletool ARM64 device set was installed on
-Samsung SM-A235F/API 34; the release process remained alive and logcat contained
-no fatal Android exception. That is retained as historical binary-baseline
-evidence, not as proof of the later identity migration. The identity-migrated
-development/staging/production Android debug variants and all three root iOS
-simulator variants compiled successfully. A later Samsung rebuild attempt
-stopped at `mergeProductionDebugNativeLibs` with `No space left on device`, so
-new-icon/native-splash launch evidence and a post-identity release artifact are
-explicitly pending rather than inferred.
+The current unsigned ARM64 release artifact cannot be installed directly and
+correctly fails Android certificate parsing until a consuming product supplies
+release signing. For local smoke only, an unchanged copy was signed with the
+machine's debug key and installed on Samsung SM-A235F/API 34. The current
+process remained alive and top-resumed, logcat contained no fatal marker, and a
+captured frame showed the expected bilingual controlled missing-production-
+configuration state with Retry—not a black screen or infinite splash. This is
+release-code smoke evidence, not production-signing approval. All three Android
+debug flavors, current release artifacts, all three root iOS Simulator flavors,
+and Maps/Remote Config Android+iOS production examples compiled successfully.
 
 ## Physical-device and manual matrix
 

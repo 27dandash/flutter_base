@@ -106,7 +106,7 @@ cover failure, cancellation and disposal without native channels.
 
 | Package | Capability | Root rule |
 |---|---|---|
-| `packages/app_notifications` | Notification permissions, token lifecycle and delivery adapter | Opt in explicitly; must not block startup |
+| `packages/app_notifications` | Notification permissions, installation/FCM token lifecycle, flat/nested payload normalization and injected delivery routing | Opt in explicitly; must not block startup; product event names and target-ID contracts remain application-owned |
 | `packages/app_remote_config` | Bounded remote configuration adapter | Inject; missing optional config is nonfatal |
 | `packages/app_webview` | Secure navigation/host policy and lifecycle | Product payment rules stay outside |
 | `packages/app_maps` | Map/permission/location controller contracts | Keys and product selection are release inputs |

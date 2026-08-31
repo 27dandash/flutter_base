@@ -67,6 +67,9 @@ variant-specific design, services, configuration, assets, and release gates.
 Separate inspected, executed, manually verified, inferred, and externally
 blocked results. A mocked result is never live evidence. A visual inspection is
 not pixel parity; matched screenshots and measured diffs are required.
+Historical screenshots, videos and agent reports are leads, not current runtime
+proof. Reproduce an issue on the authorized build when feasible before editing,
+and record when a visual finding cannot be reproduced.
 
 Every matrix row must cover every applicable app/flavor, role, language, theme,
 platform, environment, and state. External blockers remain open and cannot be
@@ -83,6 +86,13 @@ and light/dark. Do not invent unsupported backend behavior or overwrite Figma
 work without approval. Deliver a screen/state inventory and completeness matrix.
 Define replaceable Android/iOS icons and native splash together and record
 flavor/store branding requirements without inventing credentials.
+Record the exact Ready-for-development design version and reference-frame size.
+Count screens separately from component variants, states, modals and overlays;
+verify prototype links and flag placeholder or cross-product copy. A derived
+Flutter `designSize` must match the approved reference frames and be checked on
+multiple viewport sizes and text scales. Never ship temporary Figma/MCP asset
+URLs: approved runtime assets need local, stable files plus provenance and
+rights.
 
 ### 2. Review completed design
 
@@ -90,6 +100,8 @@ Audit every Figma page, screen, component, variant, role, app/flavor, journey,
 state, form, validation, destructive confirmation, navigation/Back behavior,
 responsive breakpoint, language, direction, theme, and accessibility condition.
 Produce a readiness verdict and blocking list. Fix only when authorized.
+Confirm that the audited version is frozen or identify later edits explicitly;
+do not infer complete journeys from disconnected frames.
 
 ### 3. Review API collection before implementation
 
@@ -101,6 +113,11 @@ deep links, external services, and missing secrets. Compare collection against
 requirements, design, existing code, and environment templates. Deliver endpoint,
 screen, role, missing-service, ambiguity, question, blocker, mockable, and
 do-not-implement lists.
+Treat saved response examples as evidence only after checking their freshness.
+For each state-changing or list endpoint, require stable documented shapes for
+empty and non-empty responses, success and validation failure, nullable fields,
+content type and mutation results. Never mask contract drift with client cache,
+mock data, hardcoded success or permissive dynamic casting.
 
 ### 4. Prove collection completeness
 

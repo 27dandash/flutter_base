@@ -4,6 +4,7 @@ import 'package:awesome_notifications/awesome_notifications.dart'
     hide NotificationChannel;
 
 import 'notification_enums.dart';
+import 'notification_payload_normalizer.dart';
 
 final class NotificationPayload {
   final String id;
@@ -36,6 +37,7 @@ final class NotificationPayload {
     Map<String, dynamic> data, {
     String? languageCode,
   }) {
+    final payload = normalizeNotificationPayload(data);
     final lang =
         languageCode ?? PlatformDispatcher.instance.locale.languageCode;
     final isAr = lang == 'ar';
@@ -43,16 +45,17 @@ final class NotificationPayload {
     return NotificationPayload(
       id:
           (data['id']?.toString()) ??
+          (payload['notification_id']?.toString()) ??
           DateTime.now().millisecondsSinceEpoch.toString(),
       title: _pick(
-        data,
+        payload,
         isAr: isAr,
         arKey: 'title_ar',
         enKey: 'title_en',
         fallbackKey: 'title',
       ),
       body: _pick(
-        data,
+        payload,
         isAr: isAr,
         arKey: 'body_ar',
         enKey: 'body_en',
@@ -60,19 +63,19 @@ final class NotificationPayload {
       ),
       type: _parseEnum(
         NotificationType.values,
-        data['type']?.toString(),
+        payload['type']?.toString(),
         NotificationType.message,
       ),
       channel: _parseEnum(
         NotificationChannel.values,
-        data['channel']?.toString(),
+        payload['channel']?.toString(),
         NotificationChannel.general,
       ),
-      imageUrl: data['image_url']?.toString(),
-      itemId: data['item_id']?.toString(),
-      sender: data['sender']?.toString(),
-      senderModel: data['sender_model']?.toString(),
-      data: Map<String, dynamic>.from(data),
+      imageUrl: payload['image_url']?.toString(),
+      itemId: payload['item_id']?.toString(),
+      sender: payload['sender']?.toString(),
+      senderModel: payload['sender_model']?.toString(),
+      data: payload,
       receivedAt: DateTime.now(),
     );
   }
@@ -85,11 +88,11 @@ final class NotificationPayload {
         languageCode ?? PlatformDispatcher.instance.locale.languageCode;
     final isAr = lang == 'ar';
 
-    final payloadMap = <String, dynamic>{
+    final payloadMap = normalizeNotificationPayload(<String, dynamic>{
       if (n.payload != null) ...n.payload!,
       'title': n.title ?? '',
       'body': n.body ?? '',
-    };
+    });
 
     return NotificationPayload(
       id: n.id?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),

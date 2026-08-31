@@ -2,6 +2,7 @@ library;
 
 export 'src/models/notification_enums.dart';
 export 'src/models/notification_payload.dart';
+export 'src/models/notification_payload_normalizer.dart';
 export 'src/notification_manager.dart';
 export 'src/notification_router.dart';
 export 'src/registration/device_registration.dart';
