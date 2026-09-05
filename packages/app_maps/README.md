@@ -42,6 +42,12 @@ uncommitted. Xcode injects it into `Info.plist`; `AppDelegate` calls
 `GMSServices.provideAPIKey` only for a non-empty, non-placeholder value.
 Restrict each key by the exact bundle ID.
 
+Consuming applications must replace and localize
+`NSLocationWhenInUseUsageDescription` in their own `Info.plist`. The example
+contains neutral non-empty fallback copy so invoking Core Location never sees a
+missing/empty purpose string; it is not product consent copy. Do not commit real
+API keys.
+
 | Flavor | Android ID | Android source | iOS bundle ID | iOS source | Missing behavior |
 | --- | --- | --- | --- | --- | --- |
 | development | `com.flutter.newproject.maps.dev` | `MAPS_API_KEY_DEVELOPMENT` | `com.flutter.newproject.maps.dev` | `MapsDevelopment.local.xcconfig` | controlled state |

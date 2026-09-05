@@ -5,9 +5,11 @@ Audit `{{PROJECT_PATH}}` for every `{{APP_VARIANTS}}`, `{{FLAVORS}}`,
 `{{FIGMA_URLS}}`, `{{COLLECTION_PATHS_OR_URLS}}`, and secure
 `{{TEST_ACCOUNTS}}` references.
 
-Read `AGENTS.md`, release/security/quality skills, and the authoritative spec;
-execute family 6. Inspect first, then continue through every safe local check,
-using project scripts and exact command/artifact evidence. Do not run Git,
+Read `AGENTS.md`, `docs/RELEASE_CHECKLIST.md`, `docs/QA_MATRIX.md`,
+`docs/SIZE_AUDIT.md`, release/security/quality skills, and the authoritative
+spec; execute family 6. Inspect first, then continue through every safe local
+check using `scripts/flutter_quality_gate.sh` and exact command/artifact
+evidence. Do not run Git,
 submit stores, mutate production, or expose credentials. Report per-app/flavor
 gates and only one allowed verdict. Signing, stores, real backend/services,
 notifications/Maps/privacy, or required physical-device gaps prevent an

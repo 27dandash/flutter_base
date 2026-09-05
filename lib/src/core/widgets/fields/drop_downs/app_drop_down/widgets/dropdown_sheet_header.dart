@@ -27,7 +27,11 @@ class DropdownSheetHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: titleStyle ?? context.textStyle.s16.bold.setMainTextColor,
+              style:
+                  titleStyle ??
+                  context.textStyle.s16.bold.setColor(
+                    Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
           ),
           ?trailing,

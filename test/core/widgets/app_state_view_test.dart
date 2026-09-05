@@ -2,6 +2,7 @@
 
 import 'package:flutter_base/src/core/widgets/handling_views/app_state_view.dart';
 import 'package:flutter_base/src/core/widgets/handling_views/empty_widget.dart';
+import 'package:flutter_base/src/core/network/error/failures.dart';
 import 'package:flutter_base/src/core/widgets/handling_views/error_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,5 +157,15 @@ void main() {
     expect(find.byType(AppStateView), findsOneWidget);
     expect(find.bySemanticsLabel('Safe error'), findsWidgets);
     expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(
+      _host(
+        ErrorView.fromFailure(
+          failure: const NetworkFailure(technical: 'secret'),
+        ),
+      ),
+    );
+    expect(find.textContaining('secret'), findsNothing);
+    expect(find.byType(AppStateView), findsOneWidget);
   });
 }

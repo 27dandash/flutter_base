@@ -1,7 +1,9 @@
 # Cursor Agent Prompt — Final Production/Live Readiness
 
-Use Agent mode. Index `{{PROJECT_PATH}}`, read `.cursor/rules/`, release docs,
-and the authoritative spec. Audit all `{{APP_VARIANTS}}`, `{{FLAVORS}}`,
+Use Agent mode. Index `{{PROJECT_PATH}}`, read `.cursor/rules/`,
+`docs/RELEASE_CHECKLIST.md`, `docs/QA_MATRIX.md`, `docs/SIZE_AUDIT.md`, and the
+authoritative spec. Use `scripts/flutter_quality_gate.sh` for executable local
+evidence. Audit all `{{APP_VARIANTS}}`, `{{FLAVORS}}`,
 `{{USER_ROLES}}`, `{{BACKEND_ENVIRONMENTS}}`, authorized `{{FIGMA_URLS}}`,
 `{{COLLECTION_PATHS_OR_URLS}}`, and secure `{{TEST_ACCOUNTS}}` references.
 

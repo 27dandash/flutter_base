@@ -74,7 +74,9 @@ class DropdownItemTile extends StatelessWidget {
                           ? context.textStyle.s16.medium.setColor(
                               AppColors.primary,
                             )
-                          : context.textStyle.s16.regular.setMainTextColor,
+                          : context.textStyle.s16.regular.setColor(
+                              Theme.of(context).colorScheme.onSurface,
+                            ),
                     ),
                   ),
                   SizedBox(width: DropdownLayout.itemSelectionWidgetGap.w),

@@ -120,3 +120,19 @@ jobs:
           else
             echo "No automated tests in this package."
           fi
+      - name: Analyze and test optional-package example when present
+        shell: bash
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          if [[ -f example/pubspec.yaml ]]; then
+            cd example
+            flutter pub get
+            flutter analyze
+            if [[ -d test ]]; then
+              flutter test
+            else
+              echo "No automated tests in this example."
+            fi
+          else
+            echo "No example application in this package."
+          fi

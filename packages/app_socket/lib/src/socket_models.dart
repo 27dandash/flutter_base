@@ -18,6 +18,15 @@ final class AppSocketFailure {
   final bool retryable;
 }
 
+final class SocketAuthenticationException implements Exception {
+  const SocketAuthenticationException([this.code = 'authentication_failed']);
+
+  final String code;
+
+  @override
+  String toString() => 'SocketAuthenticationException($code)';
+}
+
 typedef SocketAuthProvider = Future<Map<String, dynamic>> Function();
 
 final class AppSocketConfig {

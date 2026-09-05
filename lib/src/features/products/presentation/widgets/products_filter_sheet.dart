@@ -1,7 +1,6 @@
 part of '../imports/products_imports.dart';
 
-/// Modal bottom sheet for picking a status filter. Returns the picked
-/// status; `null` means "clear filter".
+/// Modal bottom sheet for picking a status filter.
 class _ProductsFilterSheet extends StatelessWidget {
   const _ProductsFilterSheet({required this.current});
 
@@ -15,13 +14,16 @@ class _ProductsFilterSheet extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                LocaleKeys.productsFilterByStatus,
-                style: const TextStyle().setMainTextColor.s14.semiBold,
+              Expanded(
+                child: Text(
+                  LocaleKeys.productsFilterByStatus,
+                  style: const TextStyle().setMainTextColor.s14.semiBold,
+                ),
               ),
-              const Spacer(),
               TextButton(
-                onPressed: () => Go.back<ProductStatus?>(null),
+                onPressed: () =>
+                    Navigator.of(context)
+                        .pop(const ProductsStatusFilterCleared()),
                 child: Text(
                   LocaleKeys.productsClear,
                   style: const TextStyle().setPrimaryColor.s13.medium,
@@ -34,7 +36,10 @@ class _ProductsFilterSheet extends StatelessWidget {
           // `RadioListTile`s just declare their `value`.
           RadioGroup<ProductStatus>(
             groupValue: current,
-            onChanged: (s) => Go.back<ProductStatus?>(s),
+            onChanged: (s) {
+              if (s == null) return;
+              Navigator.of(context).pop(ProductsStatusFilterSelected(s));
+            },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

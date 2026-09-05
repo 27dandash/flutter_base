@@ -54,9 +54,11 @@ class DefaultButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visualHeight = height ?? AppSize.sH45;
+    final interactiveHeight = visualHeight < 48 ? 48.0 : visualHeight;
     return SizedBox(
       width: width ?? context.width * .9,
-      height: height ?? AppSize.sH45,
+      height: interactiveHeight,
       child: ElevatedButton(
         onPressed: disabled == true ? null : onTap,
         style: ElevatedButton.styleFrom(

@@ -145,8 +145,7 @@ class _PaginatedListWidgetState<C extends PaginatedAsyncCubit<T>, T>
         // Empty success.
         if (state.data.items.isEmpty) {
           return _wrapRefresh(
-            widget.emptyWidget ??
-                Center(child: Text(LocaleKeys.errorExceptionNotContain)),
+            widget.emptyWidget ?? Center(child: Text(LocaleKeys.listEmpty)),
             needsScrollable: true,
           );
         }

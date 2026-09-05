@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../config/language/locale_keys.g.dart';
 import '../../../../config/res/config_imports.dart';
 import '../../../shared/extensions/text_style_extensions.dart';
 
@@ -61,8 +62,8 @@ class DefaultTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final Iterable<String>? autofillHints;
   final TextCapitalization textCapitalization;
-  final String showPasswordSemanticsLabel;
-  final String hidePasswordSemanticsLabel;
+  final String? showPasswordSemanticsLabel;
+  final String? hidePasswordSemanticsLabel;
   final String? semanticLabel;
   final AutovalidateMode? autovalidateMode;
   final bool autocorrect;
@@ -113,8 +114,8 @@ class DefaultTextField extends StatefulWidget {
     this.focusNode,
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
-    this.showPasswordSemanticsLabel = 'Show password',
-    this.hidePasswordSemanticsLabel = 'Hide password',
+    this.showPasswordSemanticsLabel,
+    this.hidePasswordSemanticsLabel,
     this.semanticLabel,
     this.autovalidateMode = AutovalidateMode.onUserInteraction,
     this.autocorrect = true,
@@ -160,6 +161,17 @@ class _DefaultTextFieldState extends State<DefaultTextField> {
   @override
   Widget build(BuildContext context) {
     final bool hasLabel = widget.label != null;
+    final obscured = widget.isPassword == true || widget.secure;
+    final resolvedMaxLines = obscured
+        ? 1
+        : widget.maxLines ??
+              (widget.inputType == TextInputType.multiline
+                  ? _multilineDefaultMaxLines
+                  : 1);
+    final resolvedMinLines = obscured
+        ? 1
+        : widget.minLines ??
+              (widget.inputType == TextInputType.multiline ? null : 1);
 
     final field = TextFormField(
       controller: widget.controller,
@@ -177,12 +189,8 @@ class _DefaultTextFieldState extends State<DefaultTextField> {
       style: widget.style,
       cursorColor: Theme.of(context).colorScheme.primary,
       maxLength: widget.maxLength,
-      maxLines: widget.inputType == TextInputType.multiline
-          ? widget.maxLines ?? _multilineDefaultMaxLines
-          : 1,
-      minLines: widget.inputType == TextInputType.multiline
-          ? widget.minLines
-          : 1,
+      maxLines: resolvedMaxLines,
+      minLines: resolvedMinLines,
       autocorrect: widget.autocorrect,
       enableSuggestions: widget.enableSuggestions,
       autovalidateMode: widget.autovalidateMode,
@@ -256,8 +264,8 @@ class _DefaultTextFieldState extends State<DefaultTextField> {
   Widget? _passwordToggle() {
     if (widget.isPassword != true) return null;
     final label = _isObscured
-        ? widget.showPasswordSemanticsLabel
-        : widget.hidePasswordSemanticsLabel;
+        ? widget.showPasswordSemanticsLabel ?? LocaleKeys.showPassword
+        : widget.hidePasswordSemanticsLabel ?? LocaleKeys.hidePassword;
     return IconButton(
       tooltip: label,
       onPressed: widget.enabled

@@ -1,5 +1,24 @@
 part of '../imports/products_imports.dart';
 
+/// Typed bottom-sheet outcomes so dismissal and Clear are distinguishable.
+sealed class ProductsStatusFilterResult {
+  const ProductsStatusFilterResult();
+}
+
+final class ProductsStatusFilterDismissed extends ProductsStatusFilterResult {
+  const ProductsStatusFilterDismissed();
+}
+
+final class ProductsStatusFilterCleared extends ProductsStatusFilterResult {
+  const ProductsStatusFilterCleared();
+}
+
+final class ProductsStatusFilterSelected extends ProductsStatusFilterResult {
+  const ProductsStatusFilterSelected(this.status);
+
+  final ProductStatus status;
+}
+
 /// View-level state that doesn't belong in a cubit:
 ///   - search text controller (lifecycle tied to the widget)
 ///   - selected status filter
@@ -27,12 +46,23 @@ class ProductsViewController {
   /// Opens the status-filter sheet and applies the picked value. Lives here
   /// (not in the screen) so the screen stays a pure compose-only widget.
   Future<void> openFilterSheet(BuildContext context) async {
-    final selected = await showModalBottomSheet<ProductStatus?>(
+    final result = await showModalBottomSheet<ProductsStatusFilterResult>(
       context: context,
       isScrollControlled: true,
       builder: (_) => _ProductsFilterSheet(current: statusFilter.value),
     );
-    if (selected != null) setStatusFilter(selected);
+    applyFilterSheetResult(result);
+  }
+
+  void applyFilterSheetResult(ProductsStatusFilterResult? result) {
+    switch (result) {
+      case ProductsStatusFilterSelected(:final status):
+        setStatusFilter(status);
+      case ProductsStatusFilterCleared():
+        setStatusFilter(null);
+      case ProductsStatusFilterDismissed() || null:
+        break;
+    }
   }
 
   void clearSearch() {

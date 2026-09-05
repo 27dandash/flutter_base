@@ -1,7 +1,7 @@
 ---
 description: Widget efficiency rules for Flutter — use the widget's own attribute before wrapping. Picks the minimum-depth, most-semantic widget tree (padding, alignment, spacing, decoration, gestures, text, images, lists/slivers, inputs, navigation, visibility, animation, Stack, M3 widgets, const).
 globs: ["lib/**/*.dart"]
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Skill: Widget Efficiency — Pick the Right Widget, Build the Minimum Tree

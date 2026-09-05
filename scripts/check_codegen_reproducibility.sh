@@ -56,4 +56,10 @@ if ! diff -u "$TEMP_ROOT/expected.sha1" "$TEMP_ROOT/generated.sha1"; then
   exit 1
 fi
 
-echo "Code generation reproducible: build_runner, Injectable/Hive/FlutterGen, and 83 AR/EN keys."
+english_key_count="$(grep -cE '^  "[^"]+":' "$PROJECT_ROOT/assets/translations/en.json")"
+arabic_key_count="$(grep -cE '^  "[^"]+":' "$PROJECT_ROOT/assets/translations/ar.json")"
+[[ "$english_key_count" -eq "$arabic_key_count" ]] || {
+  echo "AR/EN localization counts differ after generation." >&2
+  exit 1
+}
+echo "Code generation reproducible: build_runner, Injectable/Hive/FlutterGen, and $english_key_count AR/EN keys."

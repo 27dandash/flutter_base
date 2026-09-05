@@ -8,23 +8,24 @@ is `Blocked`, not inferred from unit tests.
 
 | Suite | Result | Scope |
 | --- | --- | --- |
-| Root `flutter test` (default PHP mode) | 227 passed, 2 conditional skips | network/auth/retry/cache/parser/offline/TLS/log redaction, startup, session/routing, architecture/optional boundaries, assets/translations, async/pagination concurrency, canonical and compatibility media/state/action/navigation widgets, theme/RTL/routes/accessibility |
+| Root `flutter test` (default PHP mode) | 237 passed, 2 conditional skips | network/auth/retry/cache/parser/offline/TLS/log redaction, startup, session/routing, architecture/optional boundaries, assets/translations, async/pagination concurrency, canonical and compatibility media/state/action/navigation widgets, theme/RTL/routes/accessibility |
 | PHP inverse command | 15 passed, 3 skipped | explicitly executes `PHP_RESPONSE_MODE=false` behavior |
-| `app_notifications` | 9 passed | IDs vs token, permission, timeout, dedupe, refresh, retry, logout/switch |
+| `app_notifications` | 16 passed | IDs vs token, permission, timeout, dedupe, refresh, retry, logout/switch, redacted logging and AR/EN action labels |
 | `app_remote_config` | 16 passed | backward-compatible API, injection, lazy disablement, defaults, environment policies, bounded initialization/fetch/activation, concurrency, typed fallbacks, retry, offline-safe errors and disposal |
 | `app_webview` | 6 passed | URL/host policy, schemes, callbacks, dedupe, safe localized invalid-configuration page state |
 | `app_maps` | 7 passed | config, fallback, permissions/services, timeout, selection/lookup, accessible missing-key page state |
-| `app_socket` | 6 passed | idempotency/listeners, network, auth change, logout, reconnect bounds |
+| `app_socket` | 8 passed | idempotency/listeners, network, auth change during connection, pause/resume races, logout and reconnect bounds |
 
-The final root coverage snapshot is 2,474 of 4,072 instrumented lines
-(60.76%). The focused `test/core/widgets` snapshot is 1,481 of 3,309 imported
+The 2026-09-03 final non-build quality-gate coverage snapshot is 2,609 of
+4,228 instrumented lines (**61.71%**); this is the authoritative result. The focused
+`test/core/widgets` snapshot remains 1,481 of 3,309 imported
 lines (44.76%). `AppMedia` is 66.09%, `AppMediaViewerPage` and the legacy
 `ImageView` adapter are 100%, `CustomAnimatedButton` is 92.50%, and
 `AppStateView` is 92.16%; `DefaultScaffold` is 84.62%. No
 trustworthy older LCOV artifact exists, so a numeric
 non-regression comparison is not claimed. Coverage is a map for future product
 paths, not a substitute for the behavior, boundary and security assertions.
-The 62 focused widget tests are included within the 227 root tests; they are not
+The 62 focused widget tests are included within the 237 root tests; they are not
 added to the root total.
 
 The invalid “187 root” report and the current manifest are reconciled in
@@ -41,7 +42,7 @@ other.
 
 | Requirement | Unit/state test | Widget/integration/release evidence | Manual/device evidence | Status |
 | --- | --- | --- | --- | --- |
-| bounded once-only startup; optional failure | `startup_coordinator_test.dart` | root app route/failure design review; Android/iOS builds | cold/warm/resume under real plugin failures | Automated passed; device blocked |
+| bounded once-only startup; optional failure | `startup_coordinator_test.dart` | root app route/failure design review; Android/iOS builds | cold/warm/resume under real plugin failures | Automated and basic physical cold/warm launch passed; real-plugin failure journey blocked |
 | queue safe before optional persistence | `offline_queue_startup_test.dart` | full root suite | low-memory/slow secure storage | Passed locally |
 | authenticated/unauthenticated/blocked/activation routing | `session_routing_policy_test.dart`, `session_failure_coordinator_test.dart` | unknown-route widget test; stack-clearing coordinator review | full real route journey and Back | Automated passed; product journey blocked |
 | cleanup failure and extension hooks | `session_cleanup_test.dart` | immediate unauthenticated state code review | real socket/token/database cleanup | Automated passed; integrations blocked |
@@ -68,7 +69,7 @@ other.
 | unknown route/no raw production error | widget test + bootstrap review | Android release and iOS simulator builds | crash reporter/symbols/state restoration | Local passed; real crash pipeline blocked |
 | flavor separation | environment tests | Android 3 debug + production release/AAB; iOS 3 simulator; Xcode schemes/settings | side-by-side install and endpoint capture | Builds passed; installed product blocked |
 | optional dependency exclusion | package independent analyze/tests | root Pub/Gradle/Xcode graph lacks Firebase/notification/WebView/Maps/socket | final store artifact inspection after opt-in | Passed for root |
-| R8/resource shrinking/tree shaking | N/A | production release APK/AAB, icon shrink 99.9% | signed install and smoke | Build passed; signed smoke blocked |
+| R8/resource shrinking/tree shaking | N/A | production release APK/AAB, icon shrink 99.9% | QA-signed copy installed and smoke-tested | Build and release-code smoke passed; production signing blocked |
 | asset existence/translation parity | `asset_manifest_test.dart` | explicit production asset bundle inspection | final product copy/artwork review | Automated passed; product copy pending |
 | size regression and symbols | `check_size_budget.sh` | ARM64/AAB gate; all Dart/R8/native symbol files produced | provider symbol upload/crash decoding | Build/gate passed; provider blocked |
 
@@ -86,9 +87,28 @@ other.
 
 Android merged package IDs were `.dev`, `.staging`, and production base. All
 merged roots contain only Internet, network-state, and wake-lock permissions.
-The production iOS simulator artifact is 198,164 KiB allocated and contains bundle ID
-`com.flutter.newproject`, display name `Flutter Base`, minimum iOS 15.0, and
-camera/photo descriptions. Placeholder identities are not release approval.
+The post-identity production iOS simulator artifact is 198,164 KiB allocated
+and contains bundle ID `com.flutter.newproject`, display name `Flutter Base`,
+minimum iOS 15.0, and camera/photo descriptions. The 198,116 KiB measurement
+in `SIZE_AUDIT.md` belongs to the earlier widget-hardening build phase; the two
+figures are not competing measurements of one artifact. Placeholder identities
+are not release approval.
+
+## Three-provider closure recheck — 2026-09-05
+
+`scripts/flutter_quality_gate.sh full` passed 27 checks with no skips using
+Flutter 3.47.1 / Dart 3.13.1. Root results were 270 passed with two expected
+PHP-mode conditional skips and 58.39% line coverage. Optional packages passed
+85 tests (Notifications 32, Remote Config 17, WebView 12, Maps 14, Socket 10),
+and the three optional examples each passed their analyzer and widget test.
+
+The device-backed files under `integration_test/` remain an explicit physical-
+device gate. A headless attempt proved that they select a mobile integration
+target and cannot be silently counted as ordinary host tests. No emulator or
+simulator was created. The connected Samsung was not installed to or launched
+during this closure; a Gradle TLS hostname failure occurred before a device run
+could begin. The existing prior Samsung smoke evidence remains historical, not
+fresh evidence for this change set.
 
 The current unsigned ARM64 release artifact cannot be installed directly and
 correctly fails Android certificate parsing until a consuming product supplies

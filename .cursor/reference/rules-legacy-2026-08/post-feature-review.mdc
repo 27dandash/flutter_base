@@ -1,6 +1,6 @@
 ---
 description: Automatic post-feature code review — finds and fixes critical issues, architecture violations, and quality gaps.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Skill: Post-Feature Code Review

@@ -43,8 +43,20 @@ final class _Backend implements DeviceRegistrationBackend {
   final removals = <DeviceRegistration>[];
   Object? upsertError;
 
+  /// Gates ONLY the first upsert so a stale in-flight completion can be
+  /// deterministically pinned while a logout/account switch races ahead.
+  Completer<void>? upsertGate;
+  Completer<void>? upsertStarted;
+
   @override
   Future<void> upsert(DeviceRegistration registration) async {
+    final gate = upsertGate;
+    if (gate != null && !gate.isCompleted) {
+      upsertGate = null;
+      upsertStarted?.complete();
+      upsertStarted = null;
+      await gate.future;
+    }
     if (upsertError != null) throw upsertError!;
     upserts.add(registration);
   }
@@ -213,6 +225,96 @@ void main() {
     await coordinator.dispose();
     await tokens.controller.close();
   });
+
+  test(
+    'an upsert that completes after logout is compensated and never reported '
+    'as registered',
+    () async {
+      final tokens = _Tokens('fcm');
+      final upsertGate = Completer<void>();
+      final backend = _Backend()
+        ..upsertGate = upsertGate
+        ..upsertStarted = Completer<void>();
+      final coordinator = _coordinator(
+        tokens: tokens,
+        permissions: _Permissions(NotificationPermissionState.authorized),
+        backend: backend,
+        timeout: const Duration(seconds: 2),
+      );
+
+      final start = coordinator.start(userId: 'user-1');
+      await backend.upsertStarted!.future; // upsert is in flight
+      // Logout lands while the upsert is still on the wire. It has no cached
+      // registration to remove yet.
+      await coordinator.logout();
+      upsertGate.complete(); // the stale upsert now completes
+
+      final result = await start;
+
+      expect(
+        result.status,
+        isNot(RegistrationStatus.registered),
+        reason: 'a registration for an ended session is not "registered"',
+      );
+      expect(backend.upserts.single.userId, 'user-1');
+      expect(
+        backend.removals.map((item) => item.userId),
+        contains('user-1'),
+        reason: 'the stale backend registration is compensated with a remove',
+      );
+      await coordinator.dispose();
+      await tokens.controller.close();
+    },
+  );
+
+  test(
+    'an upsert that completes after an account switch is compensated for the '
+    'old identity',
+    () async {
+      final tokens = _Tokens('fcm');
+      final upsertGate = Completer<void>();
+      final backend = _Backend()
+        ..upsertGate = upsertGate
+        ..upsertStarted = Completer<void>();
+      final coordinator = _coordinator(
+        tokens: tokens,
+        permissions: _Permissions(NotificationPermissionState.authorized),
+        backend: backend,
+        timeout: const Duration(seconds: 2),
+      );
+
+      final oldStart = coordinator.start(userId: 'old');
+      await backend.upsertStarted!.future; // old upsert is in flight (gated)
+
+      // Switching bumps the generation; the new registration is not gated.
+      final switchResult = await coordinator.switchAccount('new');
+      upsertGate.complete(); // release the stale old upsert
+      final oldResult = await oldStart;
+
+      expect(switchResult.status, RegistrationStatus.registered);
+      expect(
+        oldResult.status,
+        isNot(RegistrationStatus.registered),
+        reason: 'the superseded old registration must not be reported ok',
+      );
+      expect(
+        backend.upserts.map((item) => item.userId),
+        containsAll(<String>['old', 'new']),
+      );
+      expect(
+        backend.removals.map((item) => item.userId),
+        contains('old'),
+        reason: 'the stale old-identity registration is compensated',
+      );
+      expect(
+        backend.removals.map((item) => item.userId),
+        isNot(contains('new')),
+        reason: 'the new identity is the live registration, not removed',
+      );
+      await coordinator.dispose();
+      await tokens.controller.close();
+    },
+  );
 
   test(
     'account switching removes old association and registers the new user',

@@ -1,5 +1,9 @@
 <div dir="rtl" markdown="1">
 
+> **مرجع تاريخي:** الأمثلة التالية تشرح أنماط الـNetwork/Clean Architecture
+> القديمة وقد لا تعكس كل واجهات الـBase الحالية. عند التعارض، المصدر المعتمد هو
+> الكود الحالي و`docs/REUSABLE_COMPONENT_CATALOG.md` و`AGENTS.md`.
+
 # 📚 EXAMPLES — استخدام الـ Network Layer مع Clean Architecture + Cubit
 
 > دليل عملي بـ 14 سيناريو كامل. كل سيناريو فيه: الـ files بكاملها، شرح القرارات، والـ UI المربوط.

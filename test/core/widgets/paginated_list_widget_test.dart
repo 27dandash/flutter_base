@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'localized_widget_harness.dart';
+
 final class _ListCubit extends PaginatedAsyncCubit<int> {
   int calls = 0;
   Either<Failure, PaginatedData<int>> response = Right(_data([], page: 1));
@@ -113,5 +115,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.calls, 1);
     expect(find.text('item:2'), findsOneWidget);
+  });
+
+  testWidgets('default empty state uses dedicated localized copy', (
+    tester,
+  ) async {
+    await ensureLocalizedTests();
+    final cubit = _ListCubit();
+    addTearDown(cubit.close);
+    cubit.seed(
+      PaginatedState<int>(
+        data: PaginatedData<int>.initial(),
+        status: BaseStatus.success,
+      ),
+    );
+    await pumpLocalized(
+      tester,
+      BlocProvider<_ListCubit>.value(
+        value: cubit,
+        child: Scaffold(
+          body: PaginatedListWidget<_ListCubit, int>(
+            itemBuilder: (_, item, _) => Text('item:$item'),
+          ),
+        ),
+      ),
+      locale: const Locale('en'),
+    );
+    expect(find.text('No items to display'), findsOneWidget);
+    expect(find.text('No data found'), findsNothing);
   });
 }

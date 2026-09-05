@@ -79,7 +79,7 @@ class AppDropdown<T> extends StatefulWidget {
     this.selectedValues,
     this.onMultiChanged,
     this.maxSelectableItems,
-    this.selectAllText = 'Select All',
+    this.selectAllText,
     this.showSelectAll = false,
     // Custom header message
     this.showCustomHeaderMessage = false,
@@ -340,7 +340,11 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     return widget.itemAsString(value);
   }
 
-  Widget _buildSuffix({bool isLoading = false, bool isFailer = false}) {
+  Widget _buildSuffix(
+    BuildContext context, {
+    bool isLoading = false,
+    bool isFailer = false,
+  }) {
     if (isLoading) {
       return SizedBox(
         width: DropdownLayout.selectionWidgetSize.w,
@@ -362,7 +366,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
 
     return AppAssets.svg.baseSvg.arrowDown.svg(
       colorFilter: ColorFilter.mode(
-        widget.suffixIconColor ?? AppColors.black,
+        widget.suffixIconColor ??
+            Theme.of(context).colorScheme.onSurfaceVariant,
         BlendMode.srcIn,
       ),
     );
@@ -453,12 +458,16 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
             text: widget.label,
             style:
                 widget.labelTextStyle ??
-                context.textStyle.s14.regular.setBlackColor,
+                context.textStyle.s14.regular.setColor(
+                  Theme.of(context).colorScheme.onSurface,
+                ),
           ),
           if (widget.isOptional)
             TextSpan(
               text: ' (${LocaleKeys.optional})',
-              style: context.textStyle.s12.regular.setHintColor,
+              style: context.textStyle.s12.regular.setColor(
+                Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
         ],
       ),
@@ -509,6 +518,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               ? widget.onRetry
               : () => _openSheet(state),
           child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
             padding: widget.contentPadding ?? EdgeInsets.all(AppPadding.pH12),
             decoration: BoxDecoration(
               color: widget.readonly
@@ -539,15 +549,22 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                         widget.style ??
                         (_isValueEmpty(value)
                             ? (widget.hintTextStyle ??
-                                  context.textStyle.s12.regular.setHintColor)
+                                  context.textStyle.s12.regular.setColor(
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ))
                             : context.textStyle.s14.regular.setColor(
                                 widget.readonly
-                                    ? AppColors.grey1
-                                    : AppColors.black,
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                    : Theme.of(context).colorScheme.onSurface,
                               )),
                   ),
                 ),
                 _buildSuffix(
+                  context,
                   isLoading: effectiveIsLoading,
                   isFailer: effectiveIsFailer,
                 ),
@@ -1000,13 +1017,17 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         children: [
           Text(
             widget.hint ?? '',
-            style: context.textStyle.s16.bold.setColor(AppColors.black),
+            style: context.textStyle.s16.bold.setColor(
+              Theme.of(context).colorScheme.onSurface,
+            ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 4.h),
           Text(
             widget.customHeaderMessage!,
-            style: context.textStyle.s12.regular.setColor(AppColors.hintText),
+            style: context.textStyle.s12.regular.setColor(
+              Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1099,7 +1120,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
             filteredItems.every((item) => _containsItem(selected, item));
 
         return DropdownItemTile(
-          label: widget.selectAllText ?? '',
+          label: widget.selectAllText ?? LocaleKeys.selectAll,
           selected: isAllSelected,
           itemHeight: widget.itemHeight,
           trailing: DropdownCheckbox(selected: isAllSelected),

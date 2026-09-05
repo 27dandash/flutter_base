@@ -1,6 +1,6 @@
 ---
 description: Unified error handling, resilience, and UX rules for API-driven features.
-alwaysApply: true
+alwaysApply: false
 ---
 
 ## Error Handling & Resilience

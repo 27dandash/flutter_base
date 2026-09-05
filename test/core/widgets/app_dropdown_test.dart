@@ -1,16 +1,23 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter_base/src/core/widgets/fields/drop_downs/app_drop_down/app_dropdown.dart';
 import 'package:flutter_base/src/core/network/error/failures.dart';
 import 'package:flutter_base/src/core/state/paginated/paginated.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-Widget _host(Widget child) {
+import 'localized_widget_harness.dart';
+
+Widget _host(Widget child, {ThemeData? theme}) {
   return ScreenUtilInit(
     designSize: const Size(375, 812),
-    builder: (_, _) => MaterialApp(home: Scaffold(body: child)),
+    builder: (_, _) => MaterialApp(
+      theme: theme,
+      home: Scaffold(body: child),
+    ),
   );
 }
 
@@ -275,4 +282,95 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ElevatedButton), findsOneWidget);
   });
+
+  testWidgets('select all defaults to localized copy', (tester) async {
+    await ensureLocalizedTests();
+    final selected = <String>[];
+    await pumpLocalized(
+      tester,
+      AppDropdown<String>(
+        items: const ['Cairo', 'Giza'],
+        itemAsString: (item) => item,
+        isMultiSelect: true,
+        selectedValues: selected,
+        onMultiChanged: (_) {},
+        onChanged: (_) {},
+        showSearchBox: false,
+        showSelectAll: true,
+      ),
+      locale: const Locale('en'),
+    );
+    await tester.tap(find.byType(InkWell).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Select All'), findsOneWidget);
+  });
+
+  testWidgets('select all explicit override is preserved under RTL', (
+    tester,
+  ) async {
+    await ensureLocalizedTests();
+    var selected = <String>[];
+    await pumpLocalized(
+      tester,
+      AppDropdown<String>(
+        items: const ['Cairo', 'Giza'],
+        itemAsString: (item) => item,
+        isMultiSelect: true,
+        selectedValues: selected,
+        onMultiChanged: (value) => selected = value,
+        onChanged: (_) {},
+        showSearchBox: false,
+        showSelectAll: true,
+        selectAllText: 'Pick everything',
+      ),
+      locale: const Locale('ar'),
+      direction: ui.TextDirection.rtl,
+    );
+    await tester.tap(find.byType(InkWell).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Pick everything'), findsOneWidget);
+    await tester.tap(find.text('Pick everything'));
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+    expect(selected, ['Cairo', 'Giza']);
+  });
+
+  testWidgets(
+    'trigger and rows use dark-theme surface colors and 48dp target',
+    (tester) async {
+      tester.view.physicalSize = const Size(375, 812);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final theme = ThemeData.dark();
+      await tester.pumpWidget(
+        _host(
+          AppDropdown<String>(
+            items: const ['A', 'B'],
+            value: 'A',
+            itemAsString: (item) => item,
+            showSearchBox: false,
+            label: 'Choice',
+            onChanged: (_) {},
+          ),
+          theme: theme,
+        ),
+      );
+
+      final trigger = find.byType(InkWell).first;
+      expect(tester.getSize(trigger).height, greaterThanOrEqualTo(48));
+      expect(
+        tester.widget<Text>(find.text('A').first).style?.color,
+        theme.colorScheme.onSurface,
+      );
+
+      await tester.tap(trigger);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.text('B').last).style?.color,
+        theme.colorScheme.onSurface,
+      );
+    },
+  );
 }

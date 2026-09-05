@@ -27,6 +27,75 @@ void main() {
     );
   });
 
+  test('allowHttp permits only approved HTTP hosts', () {
+    final policy = WebViewNavigationPolicy(
+      AppWebViewConfig(
+        initialUri: Uri.parse('http://pay.example.com/start'),
+        title: 'Payment',
+        allowedHosts: const {'example.com'},
+        allowHttp: true,
+      ),
+    );
+    expect(
+      policy.evaluate('http://pay.example.com/next').action,
+      WebNavigationAction.navigate,
+    );
+    expect(
+      policy.evaluate('http://evil.example.net/next').action,
+      WebNavigationAction.block,
+    );
+  });
+
+  test('downloads require explicit enablement', () {
+    bool isDownload(Uri _) => true;
+    final blocked = WebViewNavigationPolicy(
+      AppWebViewConfig(
+        initialUri: Uri.parse('https://pay.example.com/start'),
+        title: 'Payment',
+        allowedHosts: const {'example.com'},
+        isDownload: isDownload,
+      ),
+    );
+    final allowed = WebViewNavigationPolicy(
+      AppWebViewConfig(
+        initialUri: Uri.parse('https://pay.example.com/start'),
+        title: 'Payment',
+        allowedHosts: const {'example.com'},
+        downloadsEnabled: true,
+        isDownload: isDownload,
+      ),
+    );
+
+    expect(
+      blocked.evaluate('https://pay.example.com/file.pdf').action,
+      WebNavigationAction.block,
+    );
+    expect(
+      allowed.evaluate('https://pay.example.com/file.pdf').action,
+      WebNavigationAction.openExternal,
+    );
+  });
+
+  test('external-open policy uses injected approved schemes only', () {
+    final policy = WebViewNavigationPolicy(
+      AppWebViewConfig(
+        initialUri: Uri.parse('https://pay.example.com/start'),
+        title: 'Payment',
+        allowedHosts: const {'example.com'},
+        approvedExternalSchemes: const {'maps'},
+      ),
+    );
+
+    expect(
+      policy.evaluate('maps://search?q=value').action,
+      WebNavigationAction.openExternal,
+    );
+    expect(
+      policy.evaluate('tel:+201000000000').action,
+      WebNavigationAction.block,
+    );
+  });
+
   test('allows the exact host and its subdomains', () {
     final policy = WebViewNavigationPolicy(_config());
     expect(

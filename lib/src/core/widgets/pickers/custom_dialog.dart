@@ -26,7 +26,7 @@ Future<T?> showCustomDialog<T>(
     barrierDismissible: barrierDismissible,
     barrierColor: barrierColor ?? Colors.black.withValues(alpha: 0.5),
     transitionDuration: transitionDuration,
-    pageBuilder: (_, _, _) {
+    pageBuilder: (dialogContext, _, _) {
       return Center(
         child: Material(
           color: Colors.transparent,
@@ -35,7 +35,7 @@ Future<T?> showCustomDialog<T>(
             margin: margin ?? EdgeInsets.symmetric(horizontal: AppPadding.pH20),
             padding: padding ?? EdgeInsets.all(AppPadding.pH20),
             decoration: BoxDecoration(
-              color: color ?? AppColors.white,
+              color: color ?? Theme.of(dialogContext).colorScheme.surface,
               borderRadius: borderRadius ?? BorderRadius.circular(AppSize.sH25),
             ),
             child: child,

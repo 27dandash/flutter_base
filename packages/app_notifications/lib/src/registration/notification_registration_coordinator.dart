@@ -147,7 +147,16 @@ final class NotificationRegistrationCoordinator {
     }
     try {
       await backend.upsert(registration).timeout(tokenTimeout);
-      if (generation == _sessionGeneration) _lastRegistration = registration;
+      if (generation != _sessionGeneration) {
+        // Logout or an account/generation change landed while this upsert was
+        // in flight. The backend now holds a registration that the concurrent
+        // logout could not see (it had no cached registration to remove yet),
+        // so compensate with a bounded backend remove. The stale registration
+        // is never cached and never reported as registered.
+        await _compensateStaleRegistration(registration);
+        return const RegistrationResult(RegistrationStatus.tokenUnavailable);
+      }
+      _lastRegistration = registration;
       return const RegistrationResult(RegistrationStatus.registered);
     } on TimeoutException catch (error) {
       return RegistrationResult(RegistrationStatus.timedOut, error: error);
@@ -156,6 +165,21 @@ final class NotificationRegistrationCoordinator {
         RegistrationStatus.backendFailure,
         error: error,
       );
+    }
+  }
+
+  /// Removes a registration that was committed to the backend after its session
+  /// had already ended. Idempotent and best effort: the local logout has
+  /// already won, so a failure here is swallowed (a product may reconcile
+  /// server-side). Never logs the token/installation identifiers.
+  Future<void> _compensateStaleRegistration(
+    DeviceRegistration registration,
+  ) async {
+    try {
+      await backend.remove(registration).timeout(tokenTimeout);
+    } catch (_) {
+      // Best-effort compensation; the terminated session must not be reported
+      // as registered regardless of whether the remove succeeds.
     }
   }
 

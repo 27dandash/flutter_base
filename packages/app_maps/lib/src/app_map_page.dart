@@ -152,6 +152,8 @@ final class _AppMapPageState extends State<AppMapPage>
 
   Widget _buildMap(MapSelectionState state) {
     final point = state.selectedPoint ?? widget.config.fallbackPoint;
+    final statusMessage = widget.messages.messageForStatus(state.status);
+    final showStatusBanner = statusMessage.isNotEmpty;
     return Stack(
       children: [
         GoogleMap(
@@ -203,7 +205,79 @@ final class _AppMapPageState extends State<AppMapPage>
               ),
             ),
           ),
+        if (showStatusBanner)
+          PositionedDirectional(
+            start: 12,
+            end: 72,
+            bottom: 12,
+            child: _LocationStatusBanner(
+              message: statusMessage,
+              retryLabel: widget.messages.retry,
+              settingsLabel: widget.messages.openSettings,
+              showSettingsAction: widget.messages.showsSettingsAction(
+                state.status,
+              ),
+              onRetry: _selection.goToCurrentLocation,
+              onOpenSettings: _selection.openRequiredSettings,
+            ),
+          ),
       ],
+    );
+  }
+}
+
+final class _LocationStatusBanner extends StatelessWidget {
+  const _LocationStatusBanner({
+    required this.message,
+    required this.retryLabel,
+    required this.settingsLabel,
+    required this.showSettingsAction,
+    required this.onRetry,
+    required this.onOpenSettings,
+  });
+
+  final String message;
+  final String retryLabel;
+  final String settingsLabel;
+  final bool showSettingsAction;
+  final VoidCallback onRetry;
+  final Future<void> Function() onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.start),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  TextButton(onPressed: onRetry, child: Text(retryLabel)),
+                  if (showSettingsAction)
+                    FilledButton.tonal(
+                      onPressed: onOpenSettings,
+                      child: Text(settingsLabel),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

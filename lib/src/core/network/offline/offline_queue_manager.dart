@@ -72,6 +72,14 @@ class OfflineQueueManager {
   bool _processing = false;
   StreamSubscription<bool>? _netSub;
   String? _activeOwnerScope;
+  int _syncGeneration = 0;
+  CancelToken? _syncCancelToken;
+
+  /// A clear requested (typically at logout) before or while [init] is opening
+  /// the store. It is applied the moment the store is available — after legacy
+  /// migration but before any record is published or replayed — so a session
+  /// boundary can never silently leave another owner's records on disk.
+  bool _pendingClearRequested = false;
 
   /// Called when an authenticated queue record is corrupted or truncated.
   /// The record is removed and never replayed.
@@ -100,6 +108,14 @@ class OfflineQueueManager {
     _box = await Hive.openBox<String>(_boxName);
     await _migrateLegacyQueue(key, legacyOwnerScope: legacyOwnerScope);
     _initialized = true;
+
+    // A logout/session boundary that raced ahead of initialization queued a
+    // clear intent. Apply it now — before the pending count is published or any
+    // replay can start — so stale owner records are never resurrected.
+    if (_pendingClearRequested) {
+      _pendingClearRequested = false;
+      await _box.clear();
+    }
     _pendingController.add(_box.length);
 
     _netSub = _network.onStatusChange.listen((online) {
@@ -114,9 +130,13 @@ class OfflineQueueManager {
 
   void activateOwnerScope(String? ownerScope) {
     final normalized = ownerScope?.trim();
-    _activeOwnerScope = normalized == null || normalized.isEmpty
+    final nextOwner = normalized == null || normalized.isEmpty
         ? null
         : normalized;
+    if (nextOwner != _activeOwnerScope) {
+      _invalidateSync('offline_queue_owner_changed');
+      _activeOwnerScope = nextOwner;
+    }
     if (_activeOwnerScope != null && _initialized && _network.isOnline) {
       unawaited(_processQueue());
     }
@@ -177,7 +197,14 @@ class OfflineQueueManager {
   /// Drops queued writes at a session boundary so they can never be replayed
   /// with another user's credentials.
   Future<void> clearPending() async {
-    if (!_initialized) return;
+    _invalidateSync('offline_queue_cleared');
+    if (!_initialized) {
+      // The store is not open yet. Record the intent so [init] wipes any
+      // persisted records the instant it opens the box, instead of silently
+      // dropping the clear and later replaying another owner's writes.
+      _pendingClearRequested = true;
+      return;
+    }
     await _box.clear();
     _pendingController.add(0);
   }
@@ -239,31 +266,63 @@ class OfflineQueueManager {
     final activeOwnerScope = _activeOwnerScope;
     if (_processing || _box.isEmpty || activeOwnerScope == null) return;
 
-    // connectivity_plus can report "online" behind a captive portal / dead
-    // router. Probe real reachability before burning retries on requests
-    // that are guaranteed to fail.
-    if (!await _network.isReallyOnline()) return;
-
+    // Reserve the worker before the reachability await. Otherwise two enqueue
+    // calls can both pass the guard and replay the same non-idempotent write.
     _processing = true;
-    _statusController.add(SyncStatus.syncing);
+    final generation = _syncGeneration;
+    var announcedSync = false;
 
     try {
+      // connectivity_plus can report "online" behind a captive portal / dead
+      // router. Probe real reachability before burning retries.
+      if (!await _network.isReallyOnline() ||
+          !_isSyncCurrent(activeOwnerScope, generation)) {
+        return;
+      }
+
+      final cancelToken = CancelToken();
+      _syncCancelToken = cancelToken;
+      announcedSync = true;
+      _statusController.add(SyncStatus.syncing);
+
       // FIFO order by createdAt.
       final ops = await _readOperations(activeOwnerScope)
         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
       for (final op in ops) {
-        if (!_network.isOnline) break;
-        await _runOne(op);
+        if (!_network.isOnline ||
+            !_isSyncCurrent(activeOwnerScope, generation)) {
+          break;
+        }
+        await _runOne(op, activeOwnerScope, generation, cancelToken);
       }
     } finally {
+      if (_syncCancelToken?.isCancelled == true ||
+          _syncGeneration == generation) {
+        _syncCancelToken = null;
+      }
       _processing = false;
-      _statusController.add(SyncStatus.idle);
+      if (announcedSync) _statusController.add(SyncStatus.idle);
       _pendingController.add(_box.length);
+
+      // Owner/lifecycle invalidation may have happened while this worker was
+      // unwinding. Give the current owner a fresh worker after the old one has
+      // fully released the single-flight guard.
+      if (_syncGeneration != generation &&
+          _activeOwnerScope != null &&
+          _box.isNotEmpty &&
+          _network.isOnline) {
+        unawaited(_processQueue());
+      }
     }
   }
 
-  Future<void> _runOne(QueuedOperation op) async {
+  Future<void> _runOne(
+    QueuedOperation op,
+    String ownerScope,
+    int generation,
+    CancelToken cancelToken,
+  ) async {
     // Stable idempotency key for THIS op, reused across every retry, so a reply
     // lost after the server already committed cannot create a duplicate
     // (double charge / double sign-up). op.id is a v4 UUID set at enqueue time;
@@ -273,46 +332,75 @@ class OfflineQueueManager {
       final res = await _dio.request<dynamic>(
         op.endpoint,
         data: op.body,
+        cancelToken: cancelToken,
         options: Options(method: op.method, headers: headers),
       );
+      if (!_isSyncCurrent(ownerScope, generation)) return;
 
       final code = res.statusCode ?? 0;
       if (code >= 200 && code < 300) {
         await _box.delete(op.id);
-        onOperationSucceeded?.call(op, res);
+        if (_isSyncCurrent(ownerScope, generation)) {
+          onOperationSucceeded?.call(op, res);
+        }
         return;
       }
 
       // 4xx = hard fail, drop.
       if (code >= 400 && code < 500) {
         await _box.delete(op.id);
-        onOperationFailed?.call(op, 'status:$code');
+        if (_isSyncCurrent(ownerScope, generation)) {
+          onOperationFailed?.call(op, 'status:$code');
+        }
         return;
       }
 
       // 5xx → retry.
-      await _bumpRetry(op);
+      await _bumpRetry(op, ownerScope, generation);
     } on DioException catch (e) {
+      if (CancelToken.isCancel(e) || !_isSyncCurrent(ownerScope, generation)) {
+        return;
+      }
       final code = e.response?.statusCode ?? 0;
       if (code >= 400 && code < 500) {
         await _box.delete(op.id);
-        onOperationFailed?.call(op, e);
+        if (_isSyncCurrent(ownerScope, generation)) {
+          onOperationFailed?.call(op, e);
+        }
         return;
       }
-      await _bumpRetry(op, error: e);
+      await _bumpRetry(op, ownerScope, generation, error: e);
     } catch (e) {
-      await _bumpRetry(op, error: e);
+      if (!_isSyncCurrent(ownerScope, generation)) return;
+      await _bumpRetry(op, ownerScope, generation, error: e);
     }
   }
 
-  Future<void> _bumpRetry(QueuedOperation op, {Object? error}) async {
+  Future<void> _bumpRetry(
+    QueuedOperation op,
+    String ownerScope,
+    int generation, {
+    Object? error,
+  }) async {
+    if (!_isSyncCurrent(ownerScope, generation)) return;
     op.retryCount += 1;
     if (op.retryCount >= _maxRetries) {
       await _box.delete(op.id);
-      onOperationFailed?.call(op, error);
+      if (_isSyncCurrent(ownerScope, generation)) {
+        onOperationFailed?.call(op, error);
+      }
       return;
     }
     await _writeOperation(op);
+  }
+
+  bool _isSyncCurrent(String ownerScope, int generation) =>
+      generation == _syncGeneration && ownerScope == _activeOwnerScope;
+
+  void _invalidateSync(String reason) {
+    _syncGeneration++;
+    final token = _syncCancelToken;
+    if (token != null && !token.isCancelled) token.cancel(reason);
   }
 
   Future<void> _writeOperation(QueuedOperation operation) async {
@@ -341,6 +429,11 @@ class OfflineQueueManager {
 
   @visibleForTesting
   Future<void> clearAll() async {
+    _invalidateSync('offline_queue_test_clear');
+    if (!_initialized) {
+      _pendingClearRequested = true;
+      return;
+    }
     await _box.clear();
     _pendingController.add(0);
   }

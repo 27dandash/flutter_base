@@ -21,6 +21,8 @@ substitute for backend enforcement, or safe place for credentials.
 - Typed string, bool, int, double, and JSON access with malformed/missing
   fallback.
 - Safe status/error codes with no raw Firebase exception user copy.
+- `tryInitialize` reports `initialized` when Firebase setup completes without
+  fetching; fetch/activation statuses remain unchanged.
 - Native Firebase caching/last-known values remain available through the SDK.
 - Disposal prevents new lifecycle work.
 

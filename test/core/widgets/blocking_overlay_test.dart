@@ -31,4 +31,132 @@ void main() {
     await tester.pump();
     expect(find.bySemanticsLabel('Loading'), findsNothing);
   });
+
+  testWidgets('loading overlay blocks system Back by default', (tester) async {
+    final controller = BlockingOverlayController();
+    addTearDown(controller.dispose);
+    var popped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => FullScreenLoadingManager(
+            controller: controller,
+            loadingLabel: 'Loading',
+            child: Scaffold(
+              body: ElevatedButton(
+                onPressed: () async {
+                  await Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenLoadingManager(
+                        controller: controller,
+                        loadingLabel: 'Loading',
+                        child: const Scaffold(body: Text('detail')),
+                      ),
+                    ),
+                  );
+                  popped = true;
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    controller.show();
+    await tester.pump();
+
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isFalse);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('detail'), findsOneWidget);
+    expect(popped, isFalse);
+
+    controller.hide();
+    await tester.pump();
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isTrue);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(popped, isTrue);
+  });
+
+  testWidgets('allowBackWhileLoading opts out of Back blocking', (
+    tester,
+  ) async {
+    final controller = BlockingOverlayController();
+    addTearDown(controller.dispose);
+    var popped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => FullScreenLoadingManager(
+            controller: controller,
+            allowBackWhileLoading: true,
+            loadingLabel: 'Loading',
+            child: Scaffold(
+              body: ElevatedButton(
+                onPressed: () async {
+                  await Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenLoadingManager(
+                        controller: controller,
+                        allowBackWhileLoading: true,
+                        loadingLabel: 'Loading',
+                        child: const Scaffold(body: Text('detail')),
+                      ),
+                    ),
+                  );
+                  popped = true;
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    controller.show();
+    await tester.pump();
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isTrue);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(popped, isTrue);
+  });
+
+  testWidgets('repeated show/hide keeps Back blocking in sync', (tester) async {
+    final controller = BlockingOverlayController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FullScreenLoadingManager(
+          controller: controller,
+          loadingLabel: 'Loading',
+          child: const Scaffold(body: Text('detail')),
+        ),
+      ),
+    );
+
+    controller.show();
+    await tester.pump();
+    controller.hide();
+    await tester.pump();
+    controller.show();
+    await tester.pump();
+
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isFalse);
+
+    controller.hide();
+    await tester.pump();
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isTrue);
+  });
 }

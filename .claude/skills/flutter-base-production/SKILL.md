@@ -40,6 +40,9 @@ historical skills under `.claude/reference/` are evidence only.
 - Tooling: `scripts/flutter_quality_gate.sh`,
   `scripts/validate_prompt_library.sh`, `dart run build_runner build`, and
   `dart run tool/generate_locale_keys.dart`.
+- Release evidence: `docs/RELEASE_CHECKLIST.md`, `docs/QA_MATRIX.md`, and
+  `docs/SIZE_AUDIT.md` define the executable gate, external blockers, and
+  phase-labelled artifact baselines.
 
 Use the tool-specific prompt library under `docs/prompts/` for design, contract,
 live parity, and production-readiness work. Do not resurrect an archived skill

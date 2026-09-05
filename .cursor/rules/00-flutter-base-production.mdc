@@ -30,5 +30,7 @@ non-binding material.
 - Do not run Git or destructive operations unless explicitly authorized.
 
 Use `scripts/flutter_quality_gate.sh quick|full|release`; expensive builds are
-`release --build`. Use Cursor adapters from `docs/prompts/README.md`. Historical
-rules were archived because they duplicated and contradicted the current base.
+`release --build`. Read `docs/RELEASE_CHECKLIST.md`, `docs/QA_MATRIX.md`, and
+`docs/SIZE_AUDIT.md` for release evidence and external blockers. Use Cursor
+adapters from `docs/prompts/README.md`. Historical rules were archived because
+they duplicated and contradicted the current base.

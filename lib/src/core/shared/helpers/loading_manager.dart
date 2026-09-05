@@ -18,24 +18,32 @@ class BlockingOverlayController extends ValueNotifier<bool> {
 class FullScreenLoadingManager extends StatelessWidget {
   final Widget child;
   final BlockingOverlayController controller;
+  final String? loadingLabel;
+
+  /// When `false` (default), system Back cannot dismiss routes while loading.
+  final bool allowBackWhileLoading;
+
   const FullScreenLoadingManager({
     super.key,
     required this.child,
     required this.controller,
     this.loadingLabel,
+    this.allowBackWhileLoading = false,
   });
-  final String? loadingLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: AlignmentDirectional.center,
-      children: [
-        child,
-        ValueListenableBuilder<bool>(
-          valueListenable: controller,
-          builder: (context, isLoading, _) => isLoading
-              ? Semantics(
+    return ValueListenableBuilder<bool>(
+      valueListenable: controller,
+      builder: (context, isLoading, _) {
+        return PopScope(
+          canPop: !isLoading || allowBackWhileLoading,
+          child: Stack(
+            alignment: AlignmentDirectional.center,
+            children: [
+              child,
+              if (isLoading)
+                Semantics(
                   container: true,
                   liveRegion: true,
                   label: loadingLabel ?? LocaleKeys.loading,
@@ -43,16 +51,13 @@ class FullScreenLoadingManager extends StatelessWidget {
                     dismissible: false,
                     color: Colors.grey.withValues(alpha: 0.3),
                   ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: controller,
-          builder: (_, isLoading, _) => isLoading
-              ? const Center(child: CupertinoActivityIndicator(radius: 15))
-              : const SizedBox.shrink(),
-        ),
-      ],
+                ),
+              if (isLoading)
+                const Center(child: CupertinoActivityIndicator(radius: 15)),
+            ],
+          ),
+        );
+      },
     );
   }
 }

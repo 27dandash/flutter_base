@@ -1,6 +1,6 @@
 # Test-count reconciliation
 
-Evidence date: 2026-08-27. Counts below come from `flutter test
+Evidence dates: 2026-08-27 through 2026-09-03. Counts below come from `flutter test
 --reporter=json`; hidden suite-loader events are excluded and conditional skips
 are counted separately. Raw event logs were written outside the repository in
 the Codex task work directory.
@@ -18,7 +18,10 @@ asset/localization assertions—changed the real root count from 157 to the
 previously reported 161. The first hardening audit added 18 behavior tests,
 producing 179. The widget-hardening phase added 28 further behavior tests,
 producing 207. The compatibility-consolidation continuation added 12 tests,
-producing the current **219 passed + 2 conditional skipped**. No optional test
+producing 219 passed + 2 conditional skipped. Subsequent identity, runtime and
+history-audit work reached 228 root tests before this independent review. The
+session-boundary hardening added nine behavior assertions, producing the
+current **237 passed + 2 conditional skipped**. No optional test
 is included in that root count.
 
 | Previous item | Current location/name | Status | Reason / replacement coverage |
@@ -44,6 +47,11 @@ is included in that root count.
 | Dropdown/text/button accessibility matrix | expanded widget tests | Added | Focus/keyboard, large data/text, RTL, light/dark, semantics and tap targets |
 | Optional WebView/Maps page states | optional package page tests | Added outside root | Safe localized configuration failures without pulling packages into root |
 | Compatibility media/state/action/navigation paths | expanded media/state/legacy widget tests | Added | Proves canonical delegation, scale mapping, async disposal, disabled semantics, viewer policy and contextual Back/Close |
+| Session-generation token storage | `test/core/network/auth/token_storage_test.dart` | Added | Single encrypted pair, fail-closed write, stale refresh refusal, superseded write and legacy migration |
+| Refresh/logout/account-switch races | `test/core/network/dio_network_audit_test.dart` | Added | Delayed refresh cannot overwrite a newer session; a stale success is cancelled after logout |
+| Offline replay owner switch | `test/core/network/dio_network_audit_test.dart` | Added | Active replay is cancelled and the old owner's second mutation never runs under the new identity |
+| Socket in-flight lifecycle races | `packages/app_socket/test/generic_socket_client_test.dart` | Added outside root | Auth change and pause/resume invalidate stale connection attempts |
+| Notification privacy/localization | `packages/app_notifications/test/notification_logging_test.dart` | Added outside root | Debug output redacts payload/identity fields and action labels match Arabic/English |
 
 No test was intentionally removed, merged away, or lost to discovery in this
 audit. The sibling `flutter_clean_arch_base` directory is not an authoritative
@@ -70,10 +78,90 @@ expected conditional selection, not a silently hidden suite.
 
 | Suite | Passed | Skipped | Failed |
 |---|---:|---:|---:|
-| Root default | 219 | 2 | 0 |
+| Root default | 237 | 2 | 0 |
 | PHP envelope inverse | 15 | 3 | 0 |
-| Notifications optional | 9 | 0 | 0 |
-| Remote Config optional | 4 | 0 | 0 |
+| Notifications optional | 16 | 0 | 0 |
+| Remote Config optional | 16 | 0 | 0 |
 | WebView optional | 6 | 0 | 0 |
 | Maps optional | 7 | 0 | 0 |
-| Socket optional | 6 | 0 | 0 |
+| Socket optional | 8 | 0 | 0 |
+| WebView example | 1 | 0 | 0 |
+| Maps example | 1 | 0 | 0 |
+| Remote Config example | 1 | 0 | 0 |
+
+The 15 inverse-PHP passes are not added wholesale to the root total because
+13 are shared assertions already discovered by the default run. Counting only
+the two OFF-only assertions, the current non-double-counted total is
+`237 root + 2 inverse-only + 53 optional + 3 examples = 295` behaviors.
+
+## Three-provider closure totals — 2026-09-05
+
+The table above is retained as the independent-review snapshot. Subsequent
+session/offline/token work added 12 root tests (237 → 249), widget and
+compatibility hardening added 18 (249 → 267), and this closure added three
+tests (owner-bound queue encryption plus two AppErrorHandler matrix tests),
+producing 270. The existing refresh test was strengthened to assert
+`Accept-Language` on refresh and retry, so it adds coverage without adding a
+new test name.
+
+| Suite | Passed | Skipped | Failed |
+|---|---:|---:|---:|
+| Root default | 270 | 2 | 0 |
+| PHP envelope inverse | 15 | 3 | 0 |
+| Notifications optional | 32 | 0 | 0 |
+| Remote Config optional | 17 | 0 | 0 |
+| WebView optional | 12 | 0 | 0 |
+| Maps optional | 14 | 0 | 0 |
+| Socket optional | 10 | 0 | 0 |
+| WebView example | 1 | 0 | 0 |
+| Maps example | 1 | 0 | 0 |
+| Remote Config example | 1 | 0 | 0 |
+
+Only the two inverse-only PHP assertions are added to the default-root count.
+The non-double-counted total is therefore
+`270 root + 2 inverse-only + 85 optional + 3 examples = 360` behaviors.
+The historically reported 61 focused widget tests remain a subset of their
+then-current root total; they were never an additional suite to add to root.
+The current `test/core/widgets` suite is **79 passed**, likewise a subset of
+the current 270 root tests.
+
+## Pre-design delegated audit totals — 2026-09-05
+
+The post-closure Claude/Cursor/Codex audit added six behavior tests without
+removing, renaming, skipping, or weakening an existing test:
+
+- one corrupted token-record self-heal test;
+- three incomplete-session tests covering failed user persistence, token-only
+  restore and user-only restore;
+- one dark-theme dropdown/real-trigger-size test;
+- one explicit multiline contract test.
+
+| Suite | Passed | Skipped | Failed |
+|---|---:|---:|---:|
+| Root default | 276 | 2 | 0 |
+| PHP envelope inverse | 15 | 3 | 0 |
+| Notifications optional | 32 | 0 | 0 |
+| Remote Config optional | 17 | 0 | 0 |
+| WebView optional | 12 | 0 | 0 |
+| Maps optional | 14 | 0 | 0 |
+| Socket optional | 10 | 0 | 0 |
+| Optional examples | 3 | 0 | 0 |
+
+The focused `test/core/widgets` suite is now **81 passed**, still a subset of
+the 276 root tests. The non-double-counted total is
+`276 root + 2 inverse-only + 85 optional + 3 examples = 366` behaviors. Root
+line coverage is 2,941/5,004 = **58.77%**.
+
+### Final delegated re-review delta
+
+Cursor's evidence-based re-review identified that the dropdown's measured
+48dp height was not yet an explicit production constraint. The implementation
+now enforces that minimum and tests it at the design viewport. One additional
+password-line-limit regression test was added; this is the only new test name
+after the full-gate snapshot above.
+
+- Final root default: **277 passed, 2 expected conditional skips**.
+- Final `test/core/widgets`: **82 passed**, a subset of the 277 root tests.
+- Final non-double-counted total: `277 + 2 + 85 + 3 = 367` behaviors.
+- Coverage remains reported from the preceding full-gate coverage run; it was
+  not represented as a new post-delta measurement.

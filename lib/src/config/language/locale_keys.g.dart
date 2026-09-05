@@ -176,6 +176,21 @@ abstract final class LocaleKeys {
   static const String _cancel = 'cancel';
   static String get cancel => _cancel.tr();
 
+  static const String _dismiss = 'dismiss';
+  static String get dismiss => _dismiss.tr();
+
+  static const String _hidePassword = 'hide_password';
+  static String get hidePassword => _hidePassword.tr();
+
+  static const String _showPassword = 'show_password';
+  static String get showPassword => _showPassword.tr();
+
+  static const String _selectAll = 'select_all';
+  static String get selectAll => _selectAll.tr();
+
+  static const String _listEmpty = 'list_empty';
+  static String get listEmpty => _listEmpty.tr();
+
   static const String _confirm = 'confirm';
   static String get confirm => _confirm.tr();
 

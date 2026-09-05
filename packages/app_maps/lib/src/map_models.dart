@@ -42,9 +42,38 @@ enum MapSelectionStatus {
 final class AppMapMessages {
   const AppMapMessages({
     this.missingConfiguration = 'Maps are not configured.',
+    this.permissionDenied =
+        'Location permission is required to use your position.',
+    this.permissionPermanentlyDenied =
+        'Location permission is blocked. Open Settings to allow access.',
+    this.servicesDisabled =
+        'Location services are turned off. Enable them to use your position.',
+    this.locationUnavailable =
+        'Your current location could not be determined. Try again.',
+    this.retry = 'Try again',
+    this.openSettings = 'Open Settings',
   });
 
   final String missingConfiguration;
+  final String permissionDenied;
+  final String permissionPermanentlyDenied;
+  final String servicesDisabled;
+  final String locationUnavailable;
+  final String retry;
+  final String openSettings;
+
+  String messageForStatus(MapSelectionStatus status) => switch (status) {
+    MapSelectionStatus.permissionDenied => permissionDenied,
+    MapSelectionStatus.permissionPermanentlyDenied =>
+      permissionPermanentlyDenied,
+    MapSelectionStatus.servicesDisabled => servicesDisabled,
+    MapSelectionStatus.locationUnavailable => locationUnavailable,
+    _ => '',
+  };
+
+  bool showsSettingsAction(MapSelectionStatus status) =>
+      status == MapSelectionStatus.permissionPermanentlyDenied ||
+      status == MapSelectionStatus.servicesDisabled;
 }
 
 @immutable

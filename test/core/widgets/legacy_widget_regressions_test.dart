@@ -41,6 +41,37 @@ void main() {
     );
   });
 
+  testWidgets('DefaultButton exposes a real 48dp minimum tap target', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ScreenUtilInit(
+        designSize: const Size(375, 812),
+        builder: (_, _) => MaterialApp(
+          home: Scaffold(
+            body: DefaultButton(title: 'Legacy', onTap: () {}),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSize(find.byType(ElevatedButton)).height,
+      greaterThanOrEqualTo(48),
+    );
+
+    await tester.pumpWidget(
+      ScreenUtilInit(
+        designSize: const Size(375, 812),
+        builder: (_, _) => MaterialApp(
+          home: Scaffold(
+            body: DefaultButton(height: 56, title: 'Large', onTap: () {}),
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(ElevatedButton)).height, 56);
+  });
+
   testWidgets('animated compatibility button is safe after async disposal', (
     tester,
   ) async {

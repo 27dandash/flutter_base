@@ -9,42 +9,47 @@ import '../options/request_extra.dart';
 import '../php/php_envelope.dart';
 import '../php/php_response_keys.dart';
 
-/// Adds the Bearer token to every request and performs a single-flight
-/// 401 → refresh → retry cycle. If the refresh fails the original error is
-/// propagated and the stored tokens are cleared (callers can react by routing
-/// to the login screen on UnauthorizedFailure).
+enum _RefreshOutcome { refreshed, failed, staleSession }
+
+/// Adds the Bearer token and performs a session-safe 401 refresh/retry cycle.
 ///
-/// This is a PLAIN [Interceptor], NOT a [QueuedInterceptor]. A
-/// `QueuedInterceptor` serialises every `onResponse` through one shared queue;
-/// because `DioClient` uses `validateStatus < 500`, a 401 is delivered to
-/// `onResponse`, and awaiting a refresh whose own 200 response must pass back
-/// through that same (still-busy) queue deadlocks the request forever. A plain
-/// interceptor has no such queue, and single-flight is provided instead by
-/// [_refreshCompleter]: concurrent 401s all await the same in-flight refresh,
-/// so the refresh endpoint is hit at most once.
+/// Refresh is single-flight per authenticated session. Every request captures
+/// [TokenStorage.sessionGeneration]; a response, refresh, or retry that
+/// completes after logout/account switching is rejected as cancellation. This
+/// prevents an old account's work from writing tokens or data into a new one.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._dio, {TokenStorage? storage, this.onAuthFailure})
     : _storage = storage ?? TokenStorage.instance;
 
-  /// Shared client used to retry the original request (full interceptor chain,
-  /// no leak). The refresh call itself runs on a throwaway [Dio] — see
-  /// [_doRefresh] — so its response never re-enters this interceptor.
+  /// Shared client used to retry the original request through the complete
+  /// interceptor chain. Refresh itself uses an isolated [Dio] to avoid
+  /// re-entering this interceptor and deadlocking a challenged request.
   final Dio _dio;
   final TokenStorage _storage;
   final Future<void> Function()? onAuthFailure;
 
-  // Shared with BaseRemoteSource via RequestExtra so callers can opt out
-  // of auth attachment per-request (e.g. login/register endpoints).
   static const _retriedFlag = RequestExtra.retried;
   static const _skipAuthFlag = RequestExtra.skipAuth;
+  static const _sessionGenerationKey = RequestExtra.authSessionGeneration;
 
-  /// In-flight refresh, shared by all callers that hit a 401 at once.
-  Completer<bool>? _refreshCompleter;
+  final Map<int, Future<_RefreshOutcome>> _refreshes = {};
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final skip = options.extra[_skipAuthFlag] == true;
-    if (!skip && _storage.hasAccessToken) {
+    if (options.extra[_skipAuthFlag] == true) {
+      handler.next(options);
+      return;
+    }
+
+    final currentGeneration = _storage.sessionGeneration;
+    final capturedGeneration = _requestGeneration(options);
+    if (capturedGeneration != null && capturedGeneration != currentGeneration) {
+      handler.reject(_staleSession(options));
+      return;
+    }
+
+    options.extra[_sessionGenerationKey] = currentGeneration;
+    if (_storage.hasAccessToken) {
       options.headers['Authorization'] = 'Bearer ${_storage.accessToken}';
     }
     handler.next(options);
@@ -55,29 +60,52 @@ class AuthInterceptor extends Interceptor {
     Response response,
     ResponseInterceptorHandler handler,
   ) async {
-    // Since DioClient uses validateStatus < 500, a 401 lands here as a
-    // normal response. In PHP-response mode the backend instead signals an
-    // expired/invalid token with HTTP 200 + {"key":"unauthenticated"}, so treat
-    // that as the same auth challenge. Off by default -> only a 401 qualifies,
-    // exactly as before.
+    final request = response.requestOptions;
+    if (_isStaleRequest(request)) {
+      handler.reject(_staleSession(request));
+      return;
+    }
+
     final isAuthChallenge =
         response.statusCode == 401 || _isPhpUnauthenticated(response);
-    if (!isAuthChallenge) return handler.next(response);
+    if (!isAuthChallenge || !_shouldAttemptRefresh(request)) {
+      handler.next(response);
+      return;
+    }
 
-    final req = response.requestOptions;
-    if (!_shouldAttemptRefresh(req)) return handler.next(response);
+    final generation = _requestGeneration(request)!;
+    final outcome = await _refresh(
+      generation,
+      acceptLanguage: request.headers['Accept-Language']?.toString(),
+    );
+    if (outcome == _RefreshOutcome.staleSession ||
+        !_storage.isCurrentGeneration(generation)) {
+      handler.reject(_staleSession(request));
+      return;
+    }
+    if (outcome == _RefreshOutcome.failed) {
+      final failedCurrentSession = await _failAuth(generation);
+      if (!failedCurrentSession) {
+        handler.reject(_staleSession(request));
+        return;
+      }
+      handler.next(response);
+      return;
+    }
 
     try {
-      final refreshed = await _refresh();
-      if (!refreshed) {
-        await _failAuth();
-        return handler.next(response);
-      }
-      final retried = await _retry(req);
-      return handler.resolve(retried);
-    } catch (_) {
-      await _failAuth();
-      return handler.next(response);
+      final retried = await _retry(request, generation);
+      handler.resolve(retried);
+    } on DioException catch (error) {
+      handler.reject(error);
+    } catch (error, stackTrace) {
+      handler.reject(
+        DioException(
+          requestOptions: request,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -86,117 +114,185 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Defensive: only reached if validateStatus is ever tightened so a 401
-    // arrives as an error instead of a response.
-    final isUnauthorized = err.response?.statusCode == 401;
-    if (!isUnauthorized || !_shouldAttemptRefresh(err.requestOptions)) {
-      return handler.next(err);
+    final request = err.requestOptions;
+    if (_isStaleRequest(request)) {
+      handler.reject(_staleSession(request));
+      return;
+    }
+
+    if (err.response?.statusCode != 401 || !_shouldAttemptRefresh(request)) {
+      handler.next(err);
+      return;
+    }
+
+    final generation = _requestGeneration(request)!;
+    final outcome = await _refresh(
+      generation,
+      acceptLanguage: request.headers['Accept-Language']?.toString(),
+    );
+    if (outcome == _RefreshOutcome.staleSession ||
+        !_storage.isCurrentGeneration(generation)) {
+      handler.reject(_staleSession(request));
+      return;
+    }
+    if (outcome == _RefreshOutcome.failed) {
+      final failedCurrentSession = await _failAuth(generation);
+      if (!failedCurrentSession) {
+        handler.reject(_staleSession(request));
+        return;
+      }
+      handler.next(err);
+      return;
     }
 
     try {
-      final refreshed = await _refresh();
-      if (!refreshed) {
-        await _failAuth();
-        return handler.next(err);
-      }
-      final retried = await _retry(err.requestOptions);
-      return handler.resolve(retried);
-    } catch (_) {
-      await _failAuth();
-      return handler.next(err);
+      final retried = await _retry(request, generation);
+      handler.resolve(retried);
+    } on DioException catch (retryError) {
+      handler.reject(retryError);
+    } catch (retryError, stackTrace) {
+      handler.reject(
+        DioException(
+          requestOptions: request,
+          error: retryError,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
-  bool _shouldAttemptRefresh(RequestOptions req) {
-    if (req.extra[_retriedFlag] == true) return false;
-    if (req.extra[_skipAuthFlag] == true) return false;
+  bool _shouldAttemptRefresh(RequestOptions request) {
+    if (request.extra[_retriedFlag] == true ||
+        request.extra[_skipAuthFlag] == true) {
+      return false;
+    }
+    final generation = _requestGeneration(request);
+    if (generation == null || !_storage.isCurrentGeneration(generation)) {
+      return false;
+    }
     final refresh = _storage.refreshToken;
     return refresh != null && refresh.isNotEmpty;
   }
 
-  /// PHP-mode only: a 200 body whose logical key is `unauthenticated` is the
-  /// custom backend's equivalent of an HTTP 401. Returns false cheaply when the
-  /// mode is off, keeping the 401-only path byte-identical by default.
   bool _isPhpUnauthenticated(Response response) {
     if (!AppConfig.phpResponseMode) return false;
     return PhpEnvelope.tryFrom(response.data)?.key ==
         PhpResponseKeys.unauthenticated;
   }
 
-  /// Single-flight refresh: the first caller performs the actual refresh,
-  /// every concurrent caller awaits the same [Completer].
-  Future<bool> _refresh() {
-    final inFlight = _refreshCompleter;
-    if (inFlight != null) return inFlight.future;
+  Future<_RefreshOutcome> _refresh(int generation, {String? acceptLanguage}) {
+    final inFlight = _refreshes[generation];
+    if (inFlight != null) return inFlight;
 
-    final completer = _refreshCompleter = Completer<bool>();
-    _doRefresh()
-        .then((ok) {
-          completer.complete(ok);
-        })
-        .catchError((Object e, StackTrace st) {
-          completer.completeError(e, st);
-        })
-        .whenComplete(() {
-          _refreshCompleter = null;
-        });
-    return completer.future;
+    final future = _doRefresh(generation, acceptLanguage: acceptLanguage);
+    _refreshes[generation] = future;
+    future.whenComplete(() {
+      if (identical(_refreshes[generation], future)) {
+        _refreshes.remove(generation);
+      }
+    });
+    return future;
   }
 
-  Future<bool> _doRefresh() async {
+  Future<_RefreshOutcome> _doRefresh(
+    int generation, {
+    String? acceptLanguage,
+  }) async {
+    if (!_storage.isCurrentGeneration(generation)) {
+      return _RefreshOutcome.staleSession;
+    }
     final refreshToken = _storage.refreshToken;
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return _RefreshOutcome.failed;
+    }
 
-    // Throwaway client for the refresh call so its 200 response does NOT pass
-    // back through THIS interceptor. Routing it through `_dio` would re-enter
-    // onResponse while we are still awaiting here — the original deadlock.
-    final tokenDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl))
-      ..httpClientAdapter = _dio.httpClientAdapter;
+    try {
+      final tokenDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl))
+        ..httpClientAdapter = _dio.httpClientAdapter;
+      final headers = <String, dynamic>{};
+      if (acceptLanguage != null && acceptLanguage.isNotEmpty) {
+        headers['Accept-Language'] = acceptLanguage;
+      }
 
-    final res = await tokenDio.post(
-      ApiEndpoints.refreshToken,
-      data: {'refresh_token': refreshToken},
-      options: Options(validateStatus: (s) => s != null && s < 500),
-    );
-    if (res.statusCode != 200 || res.data is! Map) return false;
-    final data = res.data as Map;
-    // In PHP-response mode the refresh endpoint wraps the tokens in the standard
-    // envelope ({"key":"success","data":{...}}); unwrap so they are read from
-    // the right place. Off by default -> reads `data` exactly as before.
-    final body =
-        AppConfig.phpResponseMode &&
-            data[PhpResponseKeys.key] == PhpResponseKeys.success &&
-            data[PhpResponseKeys.data] is Map
-        ? data[PhpResponseKeys.data] as Map
-        : data;
-    final access = body['access_token'] ?? body['token'];
-    final refresh = body['refresh_token'];
-    if (access is! String || access.isEmpty) return false;
-    await _storage.save(
-      access: access,
-      refresh: refresh is String ? refresh : null,
-    );
+      final response = await tokenDio.post(
+        ApiEndpoints.refreshToken,
+        data: {'refresh_token': refreshToken},
+        options: Options(
+          headers: headers.isEmpty ? null : headers,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+      if (!_storage.isCurrentGeneration(generation)) {
+        return _RefreshOutcome.staleSession;
+      }
+      if (response.statusCode != 200 || response.data is! Map) {
+        return _RefreshOutcome.failed;
+      }
+
+      final data = response.data as Map;
+      final body =
+          AppConfig.phpResponseMode &&
+              data[PhpResponseKeys.key] == PhpResponseKeys.success &&
+              data[PhpResponseKeys.data] is Map
+          ? data[PhpResponseKeys.data] as Map
+          : data;
+      final access = body['access_token'] ?? body['token'];
+      final refresh = body['refresh_token'];
+      if (access is! String || access.isEmpty) {
+        return _RefreshOutcome.failed;
+      }
+
+      final saved = await _storage.saveIfCurrent(
+        expectedGeneration: generation,
+        access: access,
+        refresh: refresh is String ? refresh : null,
+      );
+      return saved ? _RefreshOutcome.refreshed : _RefreshOutcome.staleSession;
+    } catch (_) {
+      return _storage.isCurrentGeneration(generation)
+          ? _RefreshOutcome.failed
+          : _RefreshOutcome.staleSession;
+    }
+  }
+
+  Future<Response<dynamic>> _retry(RequestOptions request, int generation) {
+    if (!_storage.isCurrentGeneration(generation)) {
+      throw _staleSession(request);
+    }
+    request.extra[_retriedFlag] = true;
+    request.extra[_sessionGenerationKey] = generation;
+    request.headers['Authorization'] = 'Bearer ${_storage.accessToken}';
+
+    final data = request.data;
+    if (data is FormData) request.data = data.clone();
+    return _dio.fetch(request);
+  }
+
+  Future<bool> _failAuth(int generation) async {
+    if (!_storage.isCurrentGeneration(generation)) return false;
+    try {
+      await _storage.clearIfCurrent(generation);
+    } finally {
+      final callback = onAuthFailure;
+      if (callback != null) await callback();
+    }
     return true;
   }
 
-  Future<Response<dynamic>> _retry(RequestOptions req) {
-    // Mark so a second 401 on the replayed request doesn't recurse, then
-    // re-issue through the shared client (full interceptor chain, no leak).
-    req.extra[_retriedFlag] = true;
-    req.headers['Authorization'] = 'Bearer ${_storage.accessToken}';
-    // FormData is single-use: once finalised on the first send it cannot be
-    // re-read. Clone it so the retried multipart body is rebuilt instead of
-    // throwing a StateError (which would silently log the user out).
-    final data = req.data;
-    if (data is FormData) {
-      req.data = data.clone();
-    }
-    return _dio.fetch(req);
+  int? _requestGeneration(RequestOptions request) {
+    final value = request.extra[_sessionGenerationKey];
+    return value is int ? value : null;
   }
 
-  Future<void> _failAuth() async {
-    await _storage.clear();
-    final cb = onAuthFailure;
-    if (cb != null) await cb();
+  bool _isStaleRequest(RequestOptions request) {
+    if (request.extra[_skipAuthFlag] == true) return false;
+    final generation = _requestGeneration(request);
+    return generation != null && !_storage.isCurrentGeneration(generation);
   }
+
+  DioException _staleSession(RequestOptions request) => DioException(
+    requestOptions: request,
+    type: DioExceptionType.cancel,
+    error: 'stale_auth_session',
+  );
 }

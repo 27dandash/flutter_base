@@ -18,4 +18,9 @@ class RequestExtra {
   /// request twice after a 401 → refresh-token cycle. Not meant for
   /// callers — exposed for documentation only.
   static const String retried = '__auth_retried';
+
+  /// Internal generation captured when an authenticated request starts.
+  /// Responses from an older generation are cancelled after logout/account
+  /// switching so old-user data cannot enter the new session.
+  static const String authSessionGeneration = '__auth_session_generation';
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../config/language/locale_keys.g.dart';
 import '../../../config/res/config_imports.dart';
 import '../../shared/extensions/widgets/widget_extentions.dart';
 import '../../shared/helpers/image_helper.dart';
@@ -31,18 +32,32 @@ class UploadImageWidget extends StatefulWidget {
 
 class _UploadImageWidgetState extends State<UploadImageWidget> {
   final imageValue = ValueNotifier<List<dynamic>>([]);
-  void _pickMultiImages() async {
-    final images = await ImageHelper.pickMultiImages();
-    if (images.isEmpty) return;
-    _updateImageValue(images);
-    _notifyUpload(images);
+  bool _busy = false;
+
+  Future<void> _pickMultiImages() async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      final images = await ImageHelper.pickMultiImages();
+      if (!mounted || images.isEmpty) return;
+      _updateImageValue(images);
+      _notifyUpload(images);
+    } finally {
+      if (mounted) _busy = false;
+    }
   }
 
-  void _pickSingleImage() async {
-    final image = await ImageHelper.pickImage();
-    if (image == null) return;
-    _updateImageValue([image]);
-    _notifyUpload([image]);
+  Future<void> _pickSingleImage() async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      final image = await ImageHelper.pickImage();
+      if (!mounted || image == null) return;
+      _updateImageValue([image]);
+      _notifyUpload([image]);
+    } finally {
+      if (mounted) _busy = false;
+    }
   }
 
   void _updateImageValue(List<File> images) {
@@ -54,8 +69,23 @@ class _UploadImageWidgetState extends State<UploadImageWidget> {
   }
 
   void _notifyUpload(List<File> images) {
-    if (widget.onUpload != null) {
-      widget.onUpload?.call(imageValue.value.whereType<File>().toList());
+    if (!mounted) return;
+    widget.onUpload?.call(imageValue.value.whereType<File>().toList());
+  }
+
+  void _removeItem(dynamic item) {
+    final updated = List<dynamic>.from(imageValue.value);
+    updated.remove(item);
+    imageValue.value = updated;
+    _notifyUpload(updated.whereType<File>().toList());
+  }
+
+  Future<void> _handlePickTap() async {
+    if (_busy) return;
+    if (widget.uploadImageType == UploadImageType.single) {
+      await _pickSingleImage();
+    } else {
+      await _pickMultiImages();
     }
   }
 
@@ -71,17 +101,16 @@ class _UploadImageWidgetState extends State<UploadImageWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.tappedItem != null) ...{
-          GestureDetector(
-            onTap: () {
-              if (widget.uploadImageType == UploadImageType.single) {
-                _pickSingleImage();
-              } else {
-                _pickMultiImages();
-              }
-            },
-            child: widget.tappedItem! is DefaultTextField
-                ? AbsorbPointer(child: widget.tappedItem)
-                : widget.tappedItem!,
+          Semantics(
+            button: true,
+            enabled: !_busy,
+            label: LocaleKeys.selectImage,
+            child: GestureDetector(
+              onTap: _busy ? null : _handlePickTap,
+              child: widget.tappedItem! is DefaultTextField
+                  ? AbsorbPointer(child: widget.tappedItem)
+                  : widget.tappedItem!,
+            ),
           ),
         },
         ValueListenableBuilder(
@@ -115,25 +144,29 @@ class _UploadImageWidgetState extends State<UploadImageWidget> {
                                     ),
                             ),
                             PositionedDirectional(
-                              top: 3,
-                              end: 3,
-                              child: GestureDetector(
-                                onTap: () {
-                                  final updated = List<dynamic>.from(
-                                    imageValue.value,
-                                  );
-                                  updated.remove(item);
-                                  imageValue.value = updated;
-                                },
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.white,
-                                    shape: BoxShape.circle,
+                              top: 0,
+                              end: 0,
+                              child: Semantics(
+                                button: true,
+                                label: LocaleKeys.imageRemove,
+                                child: IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
                                   ),
-                                  child: Icon(
-                                    Icons.close,
-                                    color: Colors.red,
-                                    size: 16.sp,
+                                  onPressed: () => _removeItem(item),
+                                  icon: Container(
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.red,
+                                      size: 16.sp,
+                                    ),
                                   ),
                                 ),
                               ),

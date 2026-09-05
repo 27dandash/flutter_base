@@ -48,6 +48,22 @@
 ### فتح الروابط والتنقل
 - الحزمة بترجع `OpenUrl` أو `NavigateToScreen` للـ`NotificationRouter` فقط.
 - التطبيق المستهلك هو اللي يختار package التنقل أو فتح الروابط، لذلك الحزمة لا تضيف `url_launcher` ولا تعتمد على Router التطبيق.
+- `NotificationUrlPolicy.secureDefault` يرفض أي `open_url` غير HTTPS أو malformed أو host غير مسموح. لا تفتح الروابط داخل الحزمة؛ مرّر `OpenUrl` للـ router بعد ضبط allow-list صريح للـ hosts أو schemes الإضافية فقط عند الحاجة.
+
+```dart
+NotificationController.urlPolicy = const NotificationUrlPolicy(
+  allowedHttpsHosts: {'links.example.test'},
+  approvedExtraSchemes: {'myapp'},
+);
+
+// داخل NotificationRouter:
+case OpenUrl(:final url):
+  if (await canLaunchUrl(url)) {
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+```
+
+> ⚠️ لا تستخدم `Uri.parse` مباشرة على payload السيرفر. استخدم `NotificationController.parseAction` أو `NotificationUrlPolicy.parseAllowedUrl` حتى يفشل الطلب بأمان (`DismissAction`) عند الروابط غير الموثوقة.
 
 > ⚠️ **ممنوع منعاً باتاً تضيف:** `firebase_messaging` أو `flutter_local_notifications` — بيتعارضوا مع awesome_notifications.
 
@@ -406,7 +422,8 @@ static Future<void> initializeRemoteNotifications({bool debug = false}) async {
   - `onFcmTokenHandle`: لما الـ FCM token يتولد/يتجدد.
   - `onNativeTokenHandle`: الـ native token (APN في iOS).
   - `onFcmSilentDataHandle`: لما data message يجي.
-- `licenseKeys: null`: مجاني لو التطبيق مش commercial. لو commercial، لازم license من awesome_notifications.
+- الإصدارات الحالية لا تحتاج `licenseKeys`؛ لا تضف مفاتيح قديمة من أمثلة
+  سابقة. راجع ترخيص الحزمة وقت تجهيز التطبيق التجاري.
 
 #### Method 3: `mySilentDataHandle` — أهم method
 
@@ -426,8 +443,9 @@ static Future<void> mySilentDataHandle(FcmSilentData silentData) async {
       content: content,
       actionButtons: _buildActionButtons(payload),
     );
-  } catch (e) {
-    debugPrint('mySilentDataHandle error: $e');
+  } catch (_) {
+    // لا تطبع الـexception أو payload؛ قد يحتويان بيانات شخصية أو tokens.
+    if (kDebugMode) debugPrint('Notification data handler failed');
   }
 }
 ```
@@ -440,7 +458,8 @@ static Future<void> mySilentDataHandle(FcmSilentData silentData) async {
 4. `Map<String, dynamic>.from(data)`: بنحول الـ Map من النوع الـ awesome_notifications بتاعه لـ Map عادي عشان نقدر نستخدمها في `fromMap`.
 5. `_buildContent(payload)`: بنبني شكل الإشعار من الـ payload.
 6. `createNotification(...)`: بنأمر awesome_notifications إنها تظهر الإشعار.
-7. `try/catch`: لو حصل أي error، نطبعه بدل ما التطبيق يـ crash.
+7. `try/catch`: يمنع خطأ الـplugin/payload من إسقاط الـhandler، ويسجل حدثًا
+   عامًا في debug فقط بدون exception أو payload خام.
 
 **هنا الـ Magic:** الـ method دي بتشتغل **في الـ 3 حالات**:
 - Foreground → بتشتغل في الـ main isolate.
@@ -466,8 +485,9 @@ static Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async 
     }
 
     await routeAction(receivedAction);
-  } catch (e) {
-    debugPrint('onActionReceivedMethod error: $e');
+  } catch (_) {
+    // لا تطبع action/payload/route/exception خام.
+    if (kDebugMode) debugPrint('Notification action handler failed');
   }
 }
 ```
@@ -553,15 +573,16 @@ static NotificationAction _parseAction(Map<String, String?> data) {
   return switch (data['action_type']) {
     'navigate_chat' => NavigateToChat(data['chat_id'] ?? ''),
     'navigate_screen' => NavigateToScreen(data['route'] ?? '/'),
-    'open_url' => OpenUrl(Uri.parse(data['url'] ?? '')),
+    'open_url' => _parseOpenUrl(data['url'], policy: urlPolicy),
     _ => const DismissAction(),
   };
 }
 ```
 
 **شرح:**
-- بياخد الـ payload (Map) ويحوله لـ `NotificationAction` (sealed class).
-- لو `action_type` مش معروف، الـ default هو `DismissAction()`.
+- `open_url` يمر عبر `NotificationUrlPolicy` قبل إنشاء `OpenUrl`.
+- الروابط `http` أو malformed أو hosts غير المسموحة ترجع `DismissAction` بدل فتح رابط غير آمن.
+- التطبيق المستهلك يضبط `NotificationController.urlPolicy` ويفتح الرابط داخل `NotificationRouter` فقط.
 
 ---
 
@@ -686,14 +707,16 @@ Future<bool> requestPermissions() async {
 
 ```dart
 Future<void> dispose() async {
-  IsolateNameServer.removePortNameMapping(_isolatePortName);
-  _receivePort?.close();
-  _receivePort = null;
+  await _disposeReceivePort();
+  _router = null;
+  _initialized = false;
+  _clearOwnedFcmTokenCallback();
 }
 ```
 
 **شرح:**
-- لما التطبيق يقفل، نفك التسجيل ونقفل الـ port — clean up.
+- لما التطبيق يقفل، نفك التسجيل ونقفل الـ port ونمسح callback الـ FCM المملوك للمدير فقط.
+- `tokenRefreshes` يبقى stream عام قابل لإعادة الاستخدام بعد `initialize` لاحق.
 
 ---
 

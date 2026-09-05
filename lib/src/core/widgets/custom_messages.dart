@@ -29,7 +29,7 @@ class MessageUtils {
         ),
       ),
       action: SnackBarAction(
-        label: LocaleKeys.cancel,
+        label: LocaleKeys.dismiss,
         textColor: AppColors.white,
         onPressed: () {
           ScaffoldMessenger.of(context).clearSnackBars();

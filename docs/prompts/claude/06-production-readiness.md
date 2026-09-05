@@ -1,7 +1,9 @@
 # Claude Prompt — Final Production/Live Readiness
 
-Read `CLAUDE.md`, project release instructions, and the authoritative spec.
-Audit `{{PROJECT_PATH}}` for all `{{APP_VARIANTS}}`, `{{FLAVORS}}`,
+Read `CLAUDE.md`, `docs/RELEASE_CHECKLIST.md`, `docs/QA_MATRIX.md`,
+`docs/SIZE_AUDIT.md`, and the authoritative spec. Use
+`scripts/flutter_quality_gate.sh` for executable local evidence. Audit
+`{{PROJECT_PATH}}` for all `{{APP_VARIANTS}}`, `{{FLAVORS}}`,
 `{{USER_ROLES}}`, `{{BACKEND_ENVIRONMENTS}}`, authorized `{{FIGMA_URLS}}`,
 `{{COLLECTION_PATHS_OR_URLS}}`, and secure `{{TEST_ACCOUNTS}}` references.
 

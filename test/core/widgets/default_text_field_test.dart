@@ -1,9 +1,16 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter_base/src/core/widgets/fields/text_fields/default_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget _host(Widget child, {TextDirection direction = TextDirection.ltr}) {
+import 'localized_widget_harness.dart';
+
+Widget _host(
+  Widget child, {
+  ui.TextDirection direction = ui.TextDirection.ltr,
+}) {
   return ScreenUtilInit(
     designSize: const Size(375, 812),
     builder: (_, _) => MaterialApp(
@@ -73,7 +80,7 @@ void main() {
           prefixIcon: Icon(Icons.email, key: ValueKey('prefix')),
           suffixIcon: Icon(Icons.check, key: ValueKey('suffix')),
         ),
-        direction: TextDirection.rtl,
+        direction: ui.TextDirection.rtl,
       ),
     );
 
@@ -116,4 +123,58 @@ void main() {
     expect(find.bySemanticsLabel('Email address'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('password toggle defaults resolve localized English label', (
+    tester,
+  ) async {
+    await ensureLocalizedTests();
+    await pumpLocalized(
+      tester,
+      const DefaultTextField(isPassword: true, initialValue: 'secret'),
+      locale: const Locale('en'),
+    );
+    final button = tester.widget<IconButton>(find.byType(IconButton));
+    expect(button.tooltip, 'Show password');
+  });
+
+  testWidgets('password toggle defaults resolve localized Arabic label', (
+    tester,
+  ) async {
+    await ensureLocalizedTests();
+    await pumpLocalized(
+      tester,
+      const DefaultTextField(isPassword: true, initialValue: 'secret'),
+      locale: const Locale('ar'),
+      direction: ui.TextDirection.rtl,
+    );
+    final button = tester.widget<IconButton>(find.byType(IconButton));
+    expect(button.tooltip, 'إظهار كلمة المرور');
+  });
+
+  testWidgets('explicit line limits work without a multiline keyboard type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(const DefaultTextField(maxLines: 3, minLines: 2)),
+    );
+
+    final editable = tester.widget<EditableText>(find.byType(EditableText));
+    expect(editable.maxLines, 3);
+    expect(editable.minLines, 2);
+  });
+
+  testWidgets(
+    'password fields remain single-line when line limits are passed',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          const DefaultTextField(isPassword: true, maxLines: 3, minLines: 2),
+        ),
+      );
+
+      final editable = tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable.maxLines, 1);
+      expect(editable.minLines, 1);
+    },
+  );
 }

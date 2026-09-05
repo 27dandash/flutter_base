@@ -5,6 +5,9 @@ import 'package:app_socket/app_socket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final class _Transport implements SocketTransport {
+  _Transport({this.connectGate});
+
+  final Completer<void>? connectGate;
   bool connectFails = false;
   bool connected = false;
   var connectCalls = 0;
@@ -24,6 +27,7 @@ final class _Transport implements SocketTransport {
   Future<void> connect() async {
     connectCalls++;
     if (connectFails) throw StateError('failed');
+    await connectGate?.future;
     connected = true;
   }
 
@@ -48,14 +52,17 @@ final class _Transport implements SocketTransport {
 final class _Factory implements SocketTransportFactory {
   final created = <_Transport>[];
   bool failNext = false;
+  Completer<void>? nextConnectGate;
   @override
   SocketTransport create({
     required Uri endpoint,
     required Map<String, String> headers,
     required Map<String, dynamic> authentication,
   }) {
-    final transport = _Transport()..connectFails = failNext;
+    final transport = _Transport(connectGate: nextConnectGate)
+      ..connectFails = failNext;
     failNext = false;
+    nextConnectGate = null;
     created.add(transport);
     return transport;
   }
@@ -72,6 +79,14 @@ GenericSocketClient _client(_Factory factory) => GenericSocketClient(
   transportFactory: factory,
   random: Random(1),
 );
+
+Future<void> _pumpUntil(bool Function() condition) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 2));
+  while (!condition() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  expect(condition(), isTrue, reason: 'condition did not become true');
+}
 
 void main() {
   test('connect is idempotent and emit requires a connection', () async {
@@ -118,6 +133,45 @@ void main() {
     await client.dispose();
   });
 
+  test('authentication change supersedes an in-flight connection', () async {
+    final firstGate = Completer<void>();
+    final factory = _Factory()..nextConnectGate = firstGate;
+    final client = _client(factory);
+
+    final staleConnection = client.connect();
+    await _pumpUntil(() => factory.created.length == 1);
+    await client.authenticationChanged();
+
+    expect(factory.created, hasLength(2));
+    expect(client.state, AppSocketState.connected);
+
+    firstGate.complete();
+    await staleConnection;
+    expect(factory.created.first.connected, isFalse);
+    expect(client.state, AppSocketState.connected);
+    await client.dispose();
+  });
+
+  test('pause and resume supersede an in-flight connection', () async {
+    final firstGate = Completer<void>();
+    final factory = _Factory()..nextConnectGate = firstGate;
+    final client = _client(factory);
+
+    final staleConnection = client.connect();
+    await _pumpUntil(() => factory.created.length == 1);
+    client.setNetworkAvailable(false);
+    expect(client.state, AppSocketState.paused);
+    client.setNetworkAvailable(true);
+    await _pumpUntil(() => factory.created.length == 2);
+    expect(client.state, AppSocketState.connected);
+
+    firstGate.complete();
+    await staleConnection;
+    expect(factory.created.first.connected, isFalse);
+    expect(client.state, AppSocketState.connected);
+    await client.dispose();
+  });
+
   test('logout disconnects without reconnecting', () async {
     final factory = _Factory();
     final client = _client(factory);
@@ -135,6 +189,69 @@ void main() {
     await client.connect();
     await Future<void>.delayed(const Duration(milliseconds: 5));
     expect(factory.created.length, greaterThanOrEqualTo(2));
+    await client.dispose();
+  });
+
+  test('authentication provider failure emits authenticationFailed', () async {
+    final factory = _Factory();
+    final failures = <AppSocketFailure>[];
+    final states = <AppSocketState>[];
+    final client = GenericSocketClient(
+      config: AppSocketConfig(
+        endpoint: Uri.parse('https://socket.example.com'),
+        authentication: () async => throw const SocketAuthenticationException(
+          'credentials_unavailable',
+        ),
+        initialReconnectDelay: Duration.zero,
+        maxReconnectDelay: Duration.zero,
+        connectionTimeout: const Duration(milliseconds: 20),
+      ),
+      transportFactory: factory,
+      random: Random(1),
+    );
+    client.failures.listen(failures.add);
+    client.states.listen(states.add);
+
+    await client.connect();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(client.state, AppSocketState.authenticationFailed);
+    expect(factory.created, isEmpty);
+    expect(failures.single.code, 'credentials_unavailable');
+    expect(failures.single.retryable, isFalse);
+    expect(states, contains(AppSocketState.authenticationFailed));
+    await client.dispose();
+  });
+
+  test('authenticationChanged recovers after authenticationFailed', () async {
+    var authenticated = false;
+    final factory = _Factory();
+    final client = GenericSocketClient(
+      config: AppSocketConfig(
+        endpoint: Uri.parse('https://socket.example.com'),
+        authentication: () async {
+          if (!authenticated) {
+            throw const SocketAuthenticationException(
+              'credentials_unavailable',
+            );
+          }
+          return {'token': 'fresh'};
+        },
+        initialReconnectDelay: Duration.zero,
+        maxReconnectDelay: Duration.zero,
+        connectionTimeout: const Duration(milliseconds: 20),
+      ),
+      transportFactory: factory,
+      random: Random(1),
+    );
+
+    await client.connect();
+    expect(client.state, AppSocketState.authenticationFailed);
+
+    authenticated = true;
+    await client.authenticationChanged();
+    expect(client.state, AppSocketState.connected);
+    expect(factory.created, hasLength(1));
     await client.dispose();
   });
 }

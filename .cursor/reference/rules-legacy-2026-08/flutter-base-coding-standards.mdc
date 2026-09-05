@@ -1,6 +1,6 @@
 ---
 description: Flutter_Base coding standards — colors, sizes, text styles, extensions, navigation. Always follow when writing Flutter code.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Flutter_Base — Coding Standards

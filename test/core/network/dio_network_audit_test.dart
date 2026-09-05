@@ -480,7 +480,10 @@ void main() {
         Response<dynamic>? res;
         try {
           res = await dio
-              .get<dynamic>('me')
+              .get<dynamic>(
+                'me',
+                options: Options(headers: const {'Accept-Language': 'ar'}),
+              )
               .timeout(const Duration(seconds: 4));
         } on TimeoutException {
           fail(
@@ -493,6 +496,21 @@ void main() {
         expect(res.statusCode, 200);
         expect(refreshCalls, 1, reason: 'exactly one refresh');
         expect(adapter.callsForPath('me'), 2, reason: 'original + one retry');
+        final refreshRequest = adapter.seen.singleWhere(
+          (request) => request.path.contains('refresh-token'),
+        );
+        expect(
+          refreshRequest.headers['Accept-Language'],
+          'ar',
+          reason: 'refresh must preserve the challenged request locale',
+        );
+        expect(
+          adapter.seen
+              .where((request) => request.path.contains('me'))
+              .map((request) => request.headers['Accept-Language']),
+          everyElement('ar'),
+          reason: 'the original request and its retry keep the same locale',
+        );
       },
       timeout: const Timeout(Duration(seconds: 15)),
     );
@@ -527,6 +545,90 @@ void main() {
         expect(refreshCalls, 1, reason: '3 concurrent 401s -> 1 refresh');
       },
     );
+
+    test(
+      'delayed refresh cannot overwrite or retry under a newer account',
+      () async {
+        await TokenStorage.instance.save(access: 'old', refresh: 'old-r');
+        final refreshStarted = Completer<void>();
+        final releaseRefresh = Completer<void>();
+        var protectedCalls = 0;
+        final adapter = _ScriptAdapter((o, b, n) async {
+          if (o.path.contains('refresh-token')) {
+            refreshStarted.complete();
+            await releaseRefresh.future;
+            return _json(
+              '{"access_token":"stale-access","refresh_token":"stale-r"}',
+              200,
+            );
+          }
+          protectedCalls++;
+          return _json('{"message":"unauth"}', 401);
+        });
+        final dio = _prodDio()..httpClientAdapter = adapter;
+        dio.interceptors.add(
+          AuthInterceptor(dio, storage: TokenStorage.instance),
+        );
+
+        final oldRequest = dio.get<dynamic>('me');
+        await refreshStarted.future;
+        await TokenStorage.instance.clear();
+        await TokenStorage.instance.save(
+          access: 'new-account-access',
+          refresh: 'new-account-refresh',
+        );
+        releaseRefresh.complete();
+
+        await expectLater(
+          oldRequest,
+          throwsA(
+            isA<DioException>().having(
+              (error) => error.type,
+              'type',
+              DioExceptionType.cancel,
+            ),
+          ),
+        );
+        expect(TokenStorage.instance.accessToken, 'new-account-access');
+        expect(TokenStorage.instance.refreshToken, 'new-account-refresh');
+        expect(
+          protectedCalls,
+          1,
+          reason: 'the old request must never retry with the new account',
+        );
+      },
+    );
+
+    test('successful old-session response is cancelled after logout', () async {
+      await TokenStorage.instance.save(access: 'old', refresh: 'old-r');
+      final requestStarted = Completer<void>();
+      final releaseRequest = Completer<void>();
+      final adapter = _ScriptAdapter((o, b, n) async {
+        requestStarted.complete();
+        await releaseRequest.future;
+        return _json('{"private":"old-user-data"}', 200);
+      });
+      final dio = _prodDio()..httpClientAdapter = adapter;
+      dio.interceptors.add(
+        AuthInterceptor(dio, storage: TokenStorage.instance),
+      );
+
+      final oldRequest = dio.get<dynamic>('private-data');
+      await requestStarted.future;
+      await TokenStorage.instance.clear();
+      releaseRequest.complete();
+
+      await expectLater(
+        oldRequest,
+        throwsA(
+          isA<DioException>().having(
+            (error) => error.type,
+            'type',
+            DioExceptionType.cancel,
+          ),
+        ),
+      );
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────
@@ -894,6 +996,50 @@ void main() {
               'offline replay must send a stable Idempotency-Key (the op id) so a '
               'lost-response retry cannot create a duplicate write',
         );
+      },
+    );
+
+    test(
+      'owner switch cancels in-flight replay and never starts the next op',
+      () async {
+        final firstStarted = Completer<void>();
+        final releaseFirst = Completer<void>();
+        final delayed = _ScriptAdapter((o, b, n) async {
+          if (!firstStarted.isCompleted) firstStarted.complete();
+          await releaseFirst.future;
+          return _json('{"id":1}', 200);
+        });
+        var staleSuccessCallback = false;
+        final manager = OfflineQueueManager();
+        manager.activateOwnerScope(null);
+        await manager.enqueue(
+          endpoint: 'owner-a/first',
+          method: 'POST',
+          ownerScope: 'owner-a',
+        );
+        await manager.enqueue(
+          endpoint: 'owner-a/second',
+          method: 'POST',
+          ownerScope: 'owner-a',
+        );
+        DioClient().dio.httpClientAdapter = delayed;
+        manager.onOperationSucceeded = (_, _) => staleSuccessCallback = true;
+
+        manager.activateOwnerScope('owner-a');
+        await firstStarted.future.timeout(const Duration(seconds: 5));
+        manager.activateOwnerScope(null);
+        await manager.clearPending();
+        manager.activateOwnerScope('owner-b');
+        releaseFirst.complete();
+        await _pumpUntil(() => manager.pendingCount == 0);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(delayed.calls, 1);
+        expect(staleSuccessCallback, isFalse);
+
+        manager.onOperationSucceeded = null;
+        DioClient().dio.httpClientAdapter = counting;
+        manager.activateOwnerScope('test-user');
       },
     );
   });

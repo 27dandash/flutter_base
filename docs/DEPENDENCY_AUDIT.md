@@ -1,6 +1,6 @@
 # Root dependency audit
 
-Audit date: 2026-08-27. Versions and licenses were read from the resolved local
+Audit dates: 2026-08-27 and 2026-09-03. Versions and licenses were read from the resolved local
 package metadata/LICENSE files. Size and transitive ownership are detailed in
 `SIZE_AUDIT.md`; the production Pub and Gradle graphs were also searched for
 optional integrations.
@@ -47,11 +47,14 @@ replacement is structurally redacted and behavior-tested.
 
 ## Maintenance and vulnerability evidence
 
-`flutter pub outdated --no-dev-dependencies` found only three constrained direct
-lines: `dio_cache_interceptor` 3.5.1→4.0.7, `image_cropper` 11.0.0→12.2.1 and
-`flutter_secure_storage` 10.3.1→11.0.0. The two native/security-sensitive pins
-are documented compatibility/migration decisions. Cache 4.x is a breaking API
-upgrade and is an upgrade task, not an unreviewed lockfile churn in this audit.
+The 2026-09-03 `flutter pub outdated --no-dev-dependencies` review found five
+direct lines requiring a decision: `cached_network_image` 3.4.1→4.0.0,
+`dio_cache_interceptor` 3.5.1→4.0.7, `file_picker` 12.1.1→12.2.0,
+`image_cropper` 11.0.0→12.2.1 and `flutter_secure_storage` 10.3.1→11.0.0.
+The first, cache, cropper and secure-storage upgrades contain breaking or
+platform/storage changes and require dedicated migrations. The compatible
+`file_picker` update was not mixed into this security/concurrency review. No
+dependency was changed.
 
 An OSV `querybatch` check of all 222 resolved hosted Pub package versions returned
 zero known vulnerability records on the audit date. This is point-in-time

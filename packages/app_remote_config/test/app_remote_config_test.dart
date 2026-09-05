@@ -356,6 +356,20 @@ void main() {
     expect(retryCalls, 2);
   });
 
+  test('tryInitialize reports initialized without fetching', () async {
+    final backend = _FakeBackend();
+    final client = AppRemoteConfig(
+      backend: backend,
+      firebaseInitializer: (_) async {},
+    );
+
+    final result = await client.tryInitialize();
+
+    expect(result.status, RemoteConfigOperationStatus.initialized);
+    expect(result.isSuccess, isTrue);
+    expect(backend.fetchCalls, 0);
+  });
+
   test(
     'tryInitialize bounds missing configuration without raw errors',
     () async {

@@ -41,13 +41,22 @@ final class GenericSocketClient {
   Future<void> connect() {
     if (_state == AppSocketState.disposed ||
         _state == AppSocketState.connected ||
+        _state == AppSocketState.authenticationFailed ||
         !_networkAvailable ||
         !_appActive) {
       return Future<void>.value();
     }
-    return _connectionInFlight ??= _connect().whenComplete(
-      () => _connectionInFlight = null,
-    );
+    final inFlight = _connectionInFlight;
+    if (inFlight != null) return inFlight;
+
+    late final Future<void> connection;
+    connection = _connect().whenComplete(() {
+      if (identical(_connectionInFlight, connection)) {
+        _connectionInFlight = null;
+      }
+    });
+    _connectionInFlight = connection;
+    return connection;
   }
 
   Future<void> _connect() async {
@@ -69,13 +78,23 @@ final class GenericSocketClient {
       );
       _replaceTransport(transport);
       await transport.connect().timeout(config.connectionTimeout);
-      if (generation != _generation) return;
+      if (generation != _generation) {
+        transport.disconnect();
+        return;
+      }
       _reconnectAttempts = 0;
       _setState(AppSocketState.connected);
     } on TimeoutException {
+      if (generation != _generation) return;
       _failures.add(const AppSocketFailure('connection_timeout'));
       _scheduleReconnect();
+    } on SocketAuthenticationException catch (error) {
+      if (generation != _generation) return;
+      _failures.add(AppSocketFailure(error.code, retryable: false));
+      _reconnectTimer?.cancel();
+      _setState(AppSocketState.authenticationFailed);
     } catch (_) {
+      if (generation != _generation) return;
       _failures.add(const AppSocketFailure('connection_failed'));
       _scheduleReconnect();
     }
@@ -134,8 +153,10 @@ final class GenericSocketClient {
   }
 
   void setNetworkAvailable(bool available) {
+    if (_networkAvailable == available) return;
     _networkAvailable = available;
     if (!available) {
+      _invalidateConnection();
       _reconnectTimer?.cancel();
       _transport?.disconnect();
       _setState(AppSocketState.paused);
@@ -145,8 +166,10 @@ final class GenericSocketClient {
   }
 
   void setAppActive(bool active) {
+    if (_appActive == active) return;
     _appActive = active;
     if (!active) {
+      _invalidateConnection();
       _reconnectTimer?.cancel();
       _transport?.disconnect();
       _setState(AppSocketState.paused);
@@ -157,7 +180,8 @@ final class GenericSocketClient {
 
   Future<void> authenticationChanged() async {
     if (_state == AppSocketState.disposed) return;
-    _generation++;
+    _allowReconnect = true;
+    _invalidateConnection();
     _reconnectTimer?.cancel();
     await _disconnectSubscription?.cancel();
     _disconnectSubscription = null;
@@ -172,6 +196,7 @@ final class GenericSocketClient {
         !_networkAvailable ||
         !_appActive ||
         _state == AppSocketState.disposed ||
+        _state == AppSocketState.authenticationFailed ||
         _reconnectAttempts >= config.maxReconnectAttempts ||
         _reconnectTimer?.isActive == true) {
       if (_reconnectAttempts >= config.maxReconnectAttempts) {
@@ -193,7 +218,7 @@ final class GenericSocketClient {
 
   Future<void> disconnect({bool logout = false}) async {
     if (logout) _allowReconnect = false;
-    _generation++;
+    _invalidateConnection();
     _reconnectTimer?.cancel();
     _transport?.disconnect();
     _setState(AppSocketState.disconnected);
@@ -205,10 +230,18 @@ final class GenericSocketClient {
     _states.add(value);
   }
 
+  void _invalidateConnection() {
+    _generation++;
+    // Dart Futures are not cancellable. Detach the stale attempt so a new
+    // lifecycle/auth generation can connect immediately; generation checks in
+    // [_connect] prevent the old attempt from publishing state or reconnects.
+    _connectionInFlight = null;
+  }
+
   Future<void> dispose() async {
     if (_state == AppSocketState.disposed) return;
     _allowReconnect = false;
-    _generation++;
+    _invalidateConnection();
     _reconnectTimer?.cancel();
     await _disconnectSubscription?.cancel();
     await _errorSubscription?.cancel();

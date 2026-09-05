@@ -79,9 +79,32 @@ for file in "$PROMPT_ROOT"/claude/*.md; do
   grep -q 'ledger' "$file" || fail "$file must preserve a task ledger"
 done
 
+release_references=(
+  'scripts/flutter_quality_gate.sh'
+  'docs/RELEASE_CHECKLIST.md'
+  'docs/QA_MATRIX.md'
+  'docs/SIZE_AUDIT.md'
+)
+for file in \
+  "$PROMPT_ROOT/codex/06-production-readiness.md" \
+  "$PROMPT_ROOT/cursor/06-production-readiness.md" \
+  "$PROMPT_ROOT/claude/06-production-readiness.md" \
+  "$PROJECT_ROOT/.cursor/rules/00-flutter-base-production.mdc" \
+  "$PROJECT_ROOT/.claude/skills/flutter-base-production/SKILL.md"; do
+  [[ -f "$file" ]] || fail "missing active production guidance: $file"
+  for reference in "${release_references[@]}"; do
+    grep -Fq "$reference" "$file" ||
+      fail "$file is missing executable release reference: $reference"
+  done
+done
+
+if grep -R -n '^alwaysApply: true$' "$PROJECT_ROOT/.cursor/reference"; then
+  fail "archived Cursor reference material must never be always-applied"
+fi
+
 if grep -R -n -E 'assume(s|d)? exactly two|fabricate (an )?(API|endpoint)|mocked.*as real' \
   "$PROMPT_ROOT"/codex "$PROMPT_ROOT"/cursor "$PROMPT_ROOT"/claude; then
   fail "a tool prompt contains a forbidden assumption"
 fi
 
-echo "Prompt library valid: 18 tool prompts, shared spec, variables, and tool adapters verified."
+echo "Prompt library valid: 18 tool prompts, shared spec, executable release references, variables, and tool adapters verified."

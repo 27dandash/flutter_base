@@ -8,8 +8,8 @@ foundations.
 
 | Contract | Location | Use it for | Do not put in it |
 |---|---|---|---|
-| `DefaultTextField` | `lib/src/core/widgets/fields/text_fields/default_text_field.dart` | Label/hint, controller or initial value, formatter, validation plumbing, focus, password, autofill, line/length, enabled/read-only and semantics | Feature validation or backend rules |
-| `AppDropdown<T>` | `lib/src/core/widgets/fields/drop_downs/app_drop_down/app_dropdown.dart` | Static/paginated single or multi selection, search, pending confirm/cancel, loading/empty/error/retry | Product DTO assumptions or implicit navigation |
+| `DefaultTextField` | `lib/src/core/widgets/fields/text_fields/default_text_field.dart` | Label/hint, controller or initial value, formatter, validation plumbing, focus, password, autofill, explicit min/max lines, enabled/read-only and semantics | Feature validation or backend rules |
+| `AppDropdown<T>` | `lib/src/core/widgets/fields/drop_downs/app_drop_down/app_dropdown.dart` | Static/paginated single or multi selection, search, pending confirm/cancel, loading/empty/error/retry and semantic theme colors | Product DTO assumptions or implicit navigation |
 | `AppButton` | `lib/src/core/widgets/buttons/app_button.dart` | Primary/secondary/destructive/text actions, disabled/loading state and duplicate-submit prevention | Business orchestration |
 | `AppMedia` + `AppMediaRequest` | `lib/src/core/widgets/media/` | Asset/file/network image or SVG, optional video, safe loading/failure, fullscreen policy, disposal and semantics | Product galleries, raw plugin errors or implicit navigation policy |
 | `AppImagePickerField` + `AppImagePickerService` | `lib/src/core/widgets/image_picker/` | Injectable camera/gallery picking, cancellation, lost-result recovery, replacement/removal, count/size policy and safe lifecycle | Upload API calls, feature permissions copy or product validation |
@@ -80,8 +80,8 @@ cover failure, cancellation and disposal without native channels.
 | Component | Supported states | Accessibility, theme and locale contract |
 | --- | --- | --- |
 | `AppButton` | enabled, disabled, externally loading, internally submitting, primary/secondary/destructive/text | 48dp minimum target, button/enabled semantics, focus/autofocus, theme color scheme, localized visible/loading label |
-| `DefaultTextField` | controller or initial value, validation/error, read-only/disabled, password, focus, formatter, multiline/length | semantic label, autofill/input action, configurable suggestions, directional padding, theme borders/fill/cursor, caller-localized copy |
-| `AppDropdown` | single/multi pending selection, confirm/cancel, search, paginated/static loading/empty/error/retry | focus and keyboard activation, selected/enabled item semantics, safe area/large-list layout, directional/theme-aware sheet, localized labels |
+| `DefaultTextField` | controller or initial value, validation/error, read-only/disabled, password, focus, formatter, explicit multiline/length | semantic label, autofill/input action, configurable suggestions, directional padding, theme borders/fill/cursor, caller-localized copy; password fields remain single-line |
+| `AppDropdown` | single/multi pending selection, confirm/cancel, search, paginated/static loading/empty/error/retry | focus and keyboard activation, 48dp trigger, selected/enabled item semantics, safe area/large-list layout, semantic light/dark colors, directional sheet and localized labels |
 | `AppMedia` | loading, image/SVG/video ready, safe failure/fallback, play/pause, viewer disabled/fullscreen | one caller-provided media description, localized state/action copy, directional layout, theme surface, disposal-safe async controller |
 | `AppImagePickerField` | empty/list, busy, cancel, permission denied, lost recovery, too large, max reached, replace/remove | labeled camera/gallery/replace/remove actions, duplicate-action guard, localized errors, theme/direction-aware controls |
 | `AppStateView` | named content/loading/empty/error/offline/permission constructors, skeleton, retry, custom visual, compact/full | explicit parent state semantics without duplicate visual/text announcements, accessible retry, caller-localized title/message, theme/direction inheritance |

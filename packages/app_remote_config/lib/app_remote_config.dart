@@ -102,6 +102,7 @@ final class RemoteConfigPolicy {
 enum RemoteConfigOperationStatus {
   activated,
   fetchedNoChange,
+  initialized,
   disabled,
   timedOut,
   failed,
@@ -115,7 +116,8 @@ final class RemoteConfigOperationResult {
 
   bool get isSuccess =>
       status == RemoteConfigOperationStatus.activated ||
-      status == RemoteConfigOperationStatus.fetchedNoChange;
+      status == RemoteConfigOperationStatus.fetchedNoChange ||
+      status == RemoteConfigOperationStatus.initialized;
 }
 
 final class RemoteConfigOperationException implements Exception {
@@ -178,7 +180,7 @@ final class AppRemoteConfig {
     try {
       await initialize(options: options).timeout(timeout);
       return const RemoteConfigOperationResult(
-        RemoteConfigOperationStatus.fetchedNoChange,
+        RemoteConfigOperationStatus.initialized,
       );
     } on TimeoutException {
       return const RemoteConfigOperationResult(

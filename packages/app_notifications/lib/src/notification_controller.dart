@@ -10,10 +10,12 @@ import 'models/notification_enums.dart' as app_enums;
 import 'models/notification_payload.dart';
 import 'notification_manager.dart';
 import 'notification_router.dart';
+import 'notification_url_policy.dart';
 
 class NotificationController {
   static const String _isolatePortName = 'notification_action_port';
   static FutureOr<void> Function(String token)? onFcmToken;
+  static NotificationUrlPolicy urlPolicy = NotificationUrlPolicy.secureDefault;
 
   // ── 1. Initialize Local ─────────────────────────────────────────
   static Future<void> initializeLocalNotifications({bool debug = false}) async {
@@ -98,8 +100,8 @@ class NotificationController {
         content: content,
         actionButtons: _buildActionButtons(payload),
       );
-    } catch (e) {
-      if (kDebugMode) debugPrint('mySilentDataHandle error: $e');
+    } catch (_) {
+      if (kDebugMode) debugPrint('Notification data handler failed');
     }
   }
 
@@ -144,8 +146,8 @@ class NotificationController {
       }
 
       await routeAction(receivedAction);
-    } catch (e) {
-      if (kDebugMode) debugPrint('onActionReceivedMethod error: $e');
+    } catch (_) {
+      if (kDebugMode) debugPrint('Notification action handler failed');
     }
   }
 
@@ -196,16 +198,17 @@ class NotificationController {
   static List<NotificationActionButton>? _buildActionButtons(
     NotificationPayload payload,
   ) {
+    final labels = actionLabelsForLanguage(_detectLangCode());
     return switch (payload.type) {
       app_enums.NotificationType.call => [
         NotificationActionButton(
           key: 'ACCEPT',
-          label: 'قبول',
+          label: labels.$1,
           color: Colors.green,
         ),
         NotificationActionButton(
           key: 'REJECT',
-          label: 'رفض',
+          label: labels.$2,
           color: Colors.red,
           actionType: ActionType.DismissAction,
         ),
@@ -215,13 +218,29 @@ class NotificationController {
   }
 
   // ── Parse Action from data map ──────────────────────────────────
-  static NotificationAction _parseAction(Map<String, String?> data) {
+  @visibleForTesting
+  static NotificationAction parseAction(
+    Map<String, String?> data, {
+    NotificationUrlPolicy policy = NotificationUrlPolicy.secureDefault,
+  }) {
     return switch (data['action_type']) {
       'navigate_chat' => NavigateToChat(data['chat_id'] ?? ''),
       'navigate_screen' => NavigateToScreen(data['route'] ?? '/'),
-      'open_url' => OpenUrl(Uri.parse(data['url'] ?? '')),
+      'open_url' => _parseOpenUrl(data['url'], policy: policy),
       _ => const DismissAction(),
     };
+  }
+
+  static NotificationAction _parseAction(Map<String, String?> data) =>
+      parseAction(data, policy: urlPolicy);
+
+  static NotificationAction _parseOpenUrl(
+    String? raw, {
+    required NotificationUrlPolicy policy,
+  }) {
+    final uri = policy.parseAllowedUrl(raw);
+    if (uri == null) return const DismissAction();
+    return OpenUrl(uri);
   }
 
   // ── Route Action ────────────────────────────────────────────────
@@ -239,18 +258,29 @@ class NotificationController {
     return PlatformDispatcher.instance.locale.languageCode;
   }
 
+  /// Localized background-safe action labels without a BuildContext.
+  @visibleForTesting
+  static (String, String) actionLabelsForLanguage(String languageCode) =>
+      languageCode.toLowerCase() == 'ar'
+      ? ('قبول', 'رفض')
+      : ('Accept', 'Reject');
+
   static void _logNotification(String event, Map<String, dynamic> fields) {
     if (!kDebugMode) return;
+    debugPrint(formatDebugLog(event, fields));
+  }
+
+  /// Formats structural diagnostics while redacting notification content,
+  /// identifiers, routes, payloads and errors by field name.
+  @visibleForTesting
+  static String formatDebugLog(String event, Map<String, dynamic> fields) {
     final buffer = StringBuffer()
       ..writeln('┌─────────────────────────────────────────')
       ..writeln('│ [Notifications] $event')
       ..writeln('├─────────────────────────────────────────');
     for (final entry in fields.entries) {
       final key = entry.key.toLowerCase();
-      if (key.contains('token') ||
-          key.contains('payload') ||
-          key == 'data' ||
-          key == 'id') {
+      if (_isSensitiveLogField(key)) {
         buffer.writeln('│  ${entry.key}: <redacted>');
         continue;
       }
@@ -260,6 +290,23 @@ class NotificationController {
       buffer.writeln('│  ${entry.key}: $value');
     }
     buffer.write('└─────────────────────────────────────────');
-    debugPrint(buffer.toString());
+    return buffer.toString();
   }
+
+  static bool _isSensitiveLogField(String key) =>
+      key.contains('token') ||
+      key.contains('payload') ||
+      key.contains('title') ||
+      key.contains('body') ||
+      key.contains('message') ||
+      key.contains('content') ||
+      key.contains('sender') ||
+      key.contains('user') ||
+      key.contains('account') ||
+      key.contains('chat') ||
+      key.contains('route') ||
+      key.contains('url') ||
+      key.contains('error') ||
+      key == 'data' ||
+      key == 'id';
 }

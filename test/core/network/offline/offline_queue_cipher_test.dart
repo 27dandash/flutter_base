@@ -38,6 +38,14 @@ void main() {
     expect(() => cipher.decrypt(jsonEncode(envelope)), throwsA(anything));
   });
 
+  test('rejects an encrypted record relabelled to another owner', () async {
+    final encoded = await cipher.encrypt(const {'id': 1}, ownerScope: 'user-a');
+    final envelope = jsonDecode(encoded) as Map<String, dynamic>;
+    envelope['ownerScope'] = 'user-b';
+
+    await expectLater(cipher.decrypt(jsonEncode(envelope)), throwsA(anything));
+  });
+
   test('rejects truncated and legacy records', () async {
     expect(() => cipher.decrypt('{"version":1}'), throwsA(anything));
     expect(() => cipher.decrypt('{"version":0}'), throwsFormatException);
