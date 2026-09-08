@@ -165,3 +165,25 @@ after the full-gate snapshot above.
 - Final non-double-counted total: `277 + 2 + 85 + 3 = 367` behaviors.
 - Coverage remains reported from the preceding full-gate coverage run; it was
   not represented as a new post-delta measurement.
+
+## Accepted audit hardening closure — 2026-09-08
+
+The accepted final audit fixes added 21 behavior tests without deleting,
+renaming, skipping, or weakening any existing test:
+
+- nine retry tests for `Retry-After` delta/date parsing, fallback, bounded
+  delays, safe methods, and invalid or negative values;
+- six authentication-interceptor tests for once-only failure ownership,
+  storage/callback failures, one shared timeout budget, and late completion;
+- three remote-source tests proving that only handled unauthorized failures
+  bypass the session coordinator;
+- three launcher tests proving diagnostics are stable and redact raw errors,
+  URLs, and sensitive values.
+
+- Current root default: **298 passed, 2 expected conditional skips**.
+- Current `test/core/widgets`: **82 passed**, unchanged and still a subset of
+  the 298 root tests.
+- Current non-double-counted total:
+  `298 + 2 inverse-only + 85 optional + 3 examples = 388` behaviors.
+- Coverage was not regenerated for this non-UI hardening delta and remains the
+  explicitly dated snapshot above.

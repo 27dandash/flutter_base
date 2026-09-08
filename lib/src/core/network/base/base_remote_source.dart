@@ -216,7 +216,7 @@ abstract class BaseRemoteSource {
       _cancelManager.release(cancelKey);
       final result = ResponseParser.parse<T>(response, fromJson);
       await result.fold(
-        SessionFailureCoordinator.instance.handle,
+        (failure) => _handleSessionFailure(failure, response.requestOptions),
         (_) async => false,
       );
       return result;
@@ -226,13 +226,33 @@ abstract class BaseRemoteSource {
         return const Left(CancelledFailure());
       }
       final failure = ResponseParser.parseDioError(e);
-      await SessionFailureCoordinator.instance.handle(failure);
+      await _handleSessionFailure(failure, e.requestOptions);
       return Left(failure);
     } catch (e) {
       _cancelManager.release(cancelKey);
       final failure = ResponseParser.parseUnknownError(e);
-      await SessionFailureCoordinator.instance.handle(failure);
+      await _handleSessionFailure(failure, null);
       return Left(failure);
     }
+  }
+
+  /// Routes a session-changing failure to [SessionFailureCoordinator] unless
+  /// [AuthInterceptor] already owns the transition for this request.
+  ///
+  /// After a failed token refresh the interceptor drives its own
+  /// `onAuthFailure` callback and passes the original 401 onward. Without this
+  /// guard the coordinator would terminate/clean/navigate a second time for the
+  /// very same failure. The [RequestExtra.authFailureHandled] marker is honored
+  /// **only** for an [UnauthorizedFailure], so an accidentally retained marker
+  /// can never suppress a blocked or needs-activation transition.
+  Future<void> _handleSessionFailure(
+    Failure failure,
+    RequestOptions? options,
+  ) async {
+    if (failure is UnauthorizedFailure &&
+        options?.extra[RequestExtra.authFailureHandled] == true) {
+      return;
+    }
+    await SessionFailureCoordinator.instance.handle(failure);
   }
 }

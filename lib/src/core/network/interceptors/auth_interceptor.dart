@@ -11,6 +11,8 @@ import '../php/php_response_keys.dart';
 
 enum _RefreshOutcome { refreshed, failed, staleSession }
 
+enum _GuardedOutcome { completed, failed, timedOut }
+
 /// Adds the Bearer token and performs a session-safe 401 refresh/retry cycle.
 ///
 /// Refresh is single-flight per authenticated session. Every request captures
@@ -18,8 +20,12 @@ enum _RefreshOutcome { refreshed, failed, staleSession }
 /// completes after logout/account switching is rejected as cancellation. This
 /// prevents an old account's work from writing tokens or data into a new one.
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor(this._dio, {TokenStorage? storage, this.onAuthFailure})
-    : _storage = storage ?? TokenStorage.instance;
+  AuthInterceptor(
+    this._dio, {
+    TokenStorage? storage,
+    this.onAuthFailure,
+    this.authFailureTimeout = const Duration(seconds: 10),
+  }) : _storage = storage ?? TokenStorage.instance;
 
   /// Shared client used to retry the original request through the complete
   /// interceptor chain. Refresh itself uses an isolated [Dio] to avoid
@@ -28,9 +34,15 @@ class AuthInterceptor extends Interceptor {
   final TokenStorage _storage;
   final Future<void> Function()? onAuthFailure;
 
+  /// Total upper bound on token cleanup plus [onAuthFailure] after an
+  /// unrecoverable refresh failure. A slow or stuck store/callback can never
+  /// hold the challenged request past this single shared ceiling.
+  final Duration authFailureTimeout;
+
   static const _retriedFlag = RequestExtra.retried;
   static const _skipAuthFlag = RequestExtra.skipAuth;
   static const _sessionGenerationKey = RequestExtra.authSessionGeneration;
+  static const _authFailureHandledFlag = RequestExtra.authFailureHandled;
 
   final Map<int, Future<_RefreshOutcome>> _refreshes = {};
 
@@ -84,7 +96,7 @@ class AuthInterceptor extends Interceptor {
       return;
     }
     if (outcome == _RefreshOutcome.failed) {
-      final failedCurrentSession = await _failAuth(generation);
+      final failedCurrentSession = await _failAuth(generation, request);
       if (!failedCurrentSession) {
         handler.reject(_staleSession(request));
         return;
@@ -136,7 +148,7 @@ class AuthInterceptor extends Interceptor {
       return;
     }
     if (outcome == _RefreshOutcome.failed) {
-      final failedCurrentSession = await _failAuth(generation);
+      final failedCurrentSession = await _failAuth(generation, request);
       if (!failedCurrentSession) {
         handler.reject(_staleSession(request));
         return;
@@ -268,15 +280,60 @@ class AuthInterceptor extends Interceptor {
     return _dio.fetch(request);
   }
 
-  Future<bool> _failAuth(int generation) async {
+  /// Terminates the current session after an unrecoverable refresh failure.
+  ///
+  /// Runs once for the failed refresh: the first request bumps the session
+  /// generation via [TokenStorage.clearIfCurrent], so any concurrent request
+  /// sharing the same single-flight refresh is rejected as stale before it
+  /// reaches here.
+  ///
+  /// Completion-safe by contract. Cleanup and the callback share one deadline,
+  /// this method never throws, and the caller can always forward the 401.
+  /// In-memory credentials are fail-closed synchronously regardless of the
+  /// durable-write outcome. A callback that completes or is still running at
+  /// the deadline keeps ownership of the Unauthorized transition; a callback
+  /// that fails before the deadline leaves ownership to
+  /// `SessionFailureCoordinator`. This prevents a timed-out callback from
+  /// completing later and causing a second cleanup/navigation transition.
+  Future<bool> _failAuth(int generation, RequestOptions request) async {
     if (!_storage.isCurrentGeneration(generation)) return false;
-    try {
-      await _storage.clearIfCurrent(generation);
-    } finally {
-      final callback = onAuthFailure;
-      if (callback != null) await callback();
+    final callback = onAuthFailure;
+    final deadline = Stopwatch()..start();
+
+    // Fail closed regardless of the durable store: a slow/failing tombstone
+    // write must not hang the request. In-memory tokens are already gone.
+    await _runGuarded(
+      () => _storage.clearIfCurrent(generation),
+      authFailureTimeout,
+    );
+
+    if (callback != null) {
+      final remaining = authFailureTimeout - deadline.elapsed;
+      if (remaining > Duration.zero) {
+        final outcome = await _runGuarded(callback, remaining);
+        if (outcome != _GuardedOutcome.failed) {
+          request.extra[_authFailureHandledFlag] = true;
+        }
+      }
     }
     return true;
+  }
+
+  /// Converts [action] into a safe outcome without exposing raw error text.
+  /// A timeout releases the challenged request but does not cancel the source
+  /// future, so callers must keep ownership with an already-started callback.
+  Future<_GuardedOutcome> _runGuarded(
+    Future<void> Function() action,
+    Duration timeout,
+  ) async {
+    try {
+      await action().timeout(timeout);
+      return _GuardedOutcome.completed;
+    } on TimeoutException {
+      return _GuardedOutcome.timedOut;
+    } catch (_) {
+      return _GuardedOutcome.failed;
+    }
   }
 
   int? _requestGeneration(RequestOptions request) {

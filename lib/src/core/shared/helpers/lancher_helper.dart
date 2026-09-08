@@ -1,11 +1,32 @@
-import 'dart:developer';
+import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/language/locale_keys.g.dart';
 
 class LauncherHelper {
+  /// The only diagnostic a launch failure is allowed to emit.
+  ///
+  /// Structurally redacted: it carries a stable operation label and the
+  /// exception's runtime type only — never the raw error text, target URL,
+  /// username, phone, or email that the failing value may embed. Exposed for
+  /// tests that assert this privacy contract.
+  @visibleForTesting
+  static String debugLaunchDiagnostic(String operation, Object error) =>
+      'LauncherHelper.$operation failed (${error.runtimeType})';
+
+  /// Emits [debugLaunchDiagnostic] in debug builds only. Release builds stay
+  /// silent so no raw exception text or identifying data can ever be logged.
+  static void _logLaunchFailure(String operation, Object error) {
+    if (!kDebugMode) return;
+    developer.log(
+      debugLaunchDiagnostic(operation, error),
+      name: 'LauncherHelper',
+    );
+  }
+
   static void launchURL({required String url}) async {
     if (!url.toString().startsWith('https')) {
       url = 'https://$url';
@@ -65,7 +86,7 @@ class LauncherHelper {
         }
       }
     } catch (e) {
-      log('Error: $e');
+      _logLaunchFailure('launchTwitter', e);
     }
   }
 
@@ -88,7 +109,7 @@ class LauncherHelper {
         }
       }
     } catch (e) {
-      log('Error: $e');
+      _logLaunchFailure('launchInstagram', e);
     }
   }
 
@@ -125,7 +146,7 @@ class LauncherHelper {
         }
       }
     } catch (e) {
-      log('Error: $e');
+      _logLaunchFailure('launchSnapchat', e);
     }
   }
 
@@ -145,7 +166,7 @@ class LauncherHelper {
         }
       }
     } catch (e) {
-      log('Error: $e');
+      _logLaunchFailure('launchTikTok', e);
     }
   }
 

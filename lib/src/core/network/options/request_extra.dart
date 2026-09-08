@@ -23,4 +23,14 @@ class RequestExtra {
   /// Responses from an older generation are cancelled after logout/account
   /// switching so old-user data cannot enter the new session.
   static const String authSessionGeneration = '__auth_session_generation';
+
+  /// Ownership marker set by [AuthInterceptor] once it has driven the
+  /// session-termination callback for a request whose token refresh failed.
+  ///
+  /// The interceptor owns the session transition for that failed-refresh flow;
+  /// the marker tells `BaseRemoteSource` not to invoke
+  /// `SessionFailureCoordinator` a second time for the same 401, so a single
+  /// failed refresh triggers termination/cleanup/navigation at most once.
+  /// Internal — not meant for callers.
+  static const String authFailureHandled = '__auth_failure_handled';
 }
