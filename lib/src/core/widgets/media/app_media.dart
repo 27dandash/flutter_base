@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../config/language/locale_keys.g.dart';
+import 'app_media_file_svg.dart';
 import 'app_media_models.dart';
 import 'app_media_viewer_page.dart';
 import 'app_video_controller.dart';
@@ -195,6 +197,7 @@ class AppMedia extends StatelessWidget {
         semanticLabel: semanticLabel,
         errorBuilder: error,
       ),
+      AppMediaSource.file when kIsWeb => _error(context),
       AppMediaSource.file => Image.file(
         File(request.path),
         fit: fit,
@@ -231,8 +234,9 @@ class AppMedia extends StatelessWidget {
         placeholderBuilder: (_) => placeholder,
         errorBuilder: error,
       ),
-      AppMediaSource.file => SvgPicture.file(
-        File(request.path),
+      AppMediaSource.file => buildAppMediaFileSvg(
+        context: context,
+        path: request.path,
         fit: fit,
         width: width,
         height: height,

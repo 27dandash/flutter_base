@@ -4,6 +4,8 @@ import 'dart:async';
 
 import 'package:flutter_base/src/core/widgets/image_widgets/image_view.dart';
 import 'package:flutter_base/src/core/widgets/media/media.dart';
+import 'package:flutter_base/src/core/widgets/media/app_media_file_svg_unsupported.dart'
+    as unsupported_file_svg;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -151,6 +153,31 @@ void main() {
       ),
     );
     expect(find.bySemanticsLabel('صورة'), findsOneWidget);
+  });
+
+  testWidgets('unsupported file SVG renders only the safe fallback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        Builder(
+          builder: (context) => unsupported_file_svg.buildAppMediaFileSvg(
+            context: context,
+            path: '/private/missing.svg',
+            fit: BoxFit.contain,
+            width: 120,
+            height: 120,
+            semanticsLabel: 'Receipt',
+            placeholderBuilder: (_) => const Text('loading'),
+            errorBuilder: (_, _, _) => const Text('safe file error'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('safe file error'), findsOneWidget);
+    expect(find.textContaining('/private/missing.svg'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('legacy ImageView delegates to the canonical viewer contract', (
