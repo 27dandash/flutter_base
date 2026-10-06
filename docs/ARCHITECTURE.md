@@ -114,10 +114,11 @@ validation rejects default example configuration. Root Android manifests contain
 only network state, Internet, and wake-lock permissions after merge; no broad
 storage or Firebase/notification permission leaks from optional packages.
 
-Root iOS uses Swift Package Manager and has no Podfile. Firebase config copy
-scripts are flavor-selective and no fake config is supplied. Signing, real
-bundle IDs, entitlements, associated domains, APNs, Maps keys, TLS pins, and
-backend credentials belong to the consuming product and remain release gates.
+Root iOS and macOS use Swift Package Manager and have no Podfiles. Firebase
+config copy scripts are flavor-selective and no fake config is supplied.
+Signing, real bundle IDs, entitlements, associated domains, APNs, Maps keys,
+TLS pins, and backend credentials belong to the consuming product and remain
+release gates.
 
 ## Trade-offs and known architecture debt
 

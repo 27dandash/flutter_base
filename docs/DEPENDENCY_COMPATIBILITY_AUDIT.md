@@ -1,9 +1,10 @@
 # Dependency and toolchain compatibility audit
 
-Audit date: 2026-08-27. `Latest` is the stable Pub result observed on that
-date. A matching `Current / latest / compatible` value is abbreviated as
-`same`. SDK packages follow Flutter 3.47.1. This is point-in-time evidence;
-resolution alone was not accepted as compatibility proof.
+Audit date: 2026-08-27; Apple build integration revalidated 2026-10-02.
+`Latest` is the stable Pub result observed on the original audit date. A
+matching `Current / latest / compatible` value is abbreviated as `same`. SDK
+packages follow Flutter 3.47.1. This is point-in-time evidence; resolution alone
+was not accepted as compatibility proof.
 
 ## Toolchain
 
@@ -17,8 +18,9 @@ resolution alone was not accepted as compatibility proof.
 | Android SDK | compile 36, target 36, minimum 24 | Same | Current local/store-facing baseline |
 | Android NDK | 28.2.13676358 | Same | Resolved native-plugin baseline |
 | Xcode / Swift | 26.6 (17F113) / 6.3.3 | Same | Current installed stable toolchain |
-| CocoaPods | 1.16.2 | Same, unused by this target | iOS uses Flutter Swift Package Manager; no Podfile |
+| CocoaPods | 1.16.2 | Same, unused by the root targets | iOS and macOS use Flutter Swift Package Manager; no root Podfiles |
 | iOS minimum | 15.0 | Same | Current reusable-base deployment floor |
+| macOS minimum | 10.15 | 12.0 | Flutter 3.47 migration baseline; debug and release builds verified with SwiftPM |
 
 The only unresolved toolchain warning is Flutter's future built-in-Kotlin
 migration notice. Enabling it now would be a speculative partial migration:

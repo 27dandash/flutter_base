@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # AppMedia uses CupertinoIcons; keep the font package as a direct dependency.
+  cupertino_icons: ^1.0.8
 
 #--------------------- Networks -----------------------
   dio: ^5.11.0

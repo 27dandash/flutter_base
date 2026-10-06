@@ -33,8 +33,9 @@ docs/                         architecture, release, catalog, prompts, reports
 - Flutter `>=3.47.1`
 - Dart `>=3.13.1 <4.0.0`
 - Android SDK/NDK and JDK 17 compatible with the checked Gradle files
-- Xcode on macOS for iOS builds
-- CocoaPods only for optional plugins that do not support SwiftPM
+- Xcode on macOS for iOS and macOS builds
+- Swift Package Manager for the root Apple targets; CocoaPods only for optional
+  integrations that do not support SwiftPM
 
 Use the Flutter SDK configured in `android/local.properties` or a compatible Flutter executable on `PATH`.
 
