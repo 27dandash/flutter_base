@@ -346,8 +346,9 @@ class OfflineQueueManager {
         return;
       }
 
-      // 4xx = hard fail, drop.
-      if (code >= 400 && code < 500) {
+      // A client error is a permanent rejection of this exact write, so it is
+      // dropped. Transient statuses (408/425/429) are retried like a 5xx.
+      if (_isPermanentClientError(code)) {
         await _box.delete(op.id);
         if (_isSyncCurrent(ownerScope, generation)) {
           onOperationFailed?.call(op, 'status:$code');
@@ -362,7 +363,7 @@ class OfflineQueueManager {
         return;
       }
       final code = e.response?.statusCode ?? 0;
-      if (code >= 400 && code < 500) {
+      if (_isPermanentClientError(code)) {
         await _box.delete(op.id);
         if (_isSyncCurrent(ownerScope, generation)) {
           onOperationFailed?.call(op, e);
@@ -375,6 +376,12 @@ class OfflineQueueManager {
       await _bumpRetry(op, ownerScope, generation, error: e);
     }
   }
+
+  /// 4xx responses that will not succeed on replay. 408 (timeout), 425 (too
+  /// early) and 429 (rate limited) describe the moment, not the request, so
+  /// the user's offline write must be kept and retried instead of lost.
+  static bool _isPermanentClientError(int code) =>
+      code >= 400 && code < 500 && code != 408 && code != 425 && code != 429;
 
   Future<void> _bumpRetry(
     QueuedOperation op,
