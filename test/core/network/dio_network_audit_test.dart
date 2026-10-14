@@ -999,6 +999,80 @@ void main() {
       },
     );
 
+    test('a permanent client error drops the op and reports failure', () async {
+      final manager = OfflineQueueManager();
+      final rejecting = _ScriptAdapter((o, b, n) => _json('{"e":1}', 422));
+      DioClient().dio.httpClientAdapter = rejecting;
+      final failures = <Object?>[];
+      manager.onOperationFailed = (_, error) => failures.add(error);
+
+      await manager.enqueue(
+        endpoint: 'rejected',
+        method: 'POST',
+        ownerScope: 'test-user',
+      );
+      await _pumpUntil(() => manager.pendingCount == 0);
+
+      expect(failures, ['status:422']);
+      manager.onOperationFailed = null;
+      DioClient().dio.httpClientAdapter = counting;
+    });
+
+    test(
+      'rate limiting keeps the offline write and replays it later',
+      () async {
+        final manager = OfflineQueueManager();
+        var status = 429;
+        final throttled = _ScriptAdapter(
+          (o, b, n) =>
+              _json('{"id":1}', o.path.contains('throttled') ? status : 200),
+        );
+        DioClient().dio.httpClientAdapter = throttled;
+        final failures = <Object?>[];
+        manager.onOperationFailed = (_, error) => failures.add(error);
+
+        await manager.enqueue(
+          endpoint: 'throttled',
+          method: 'POST',
+          ownerScope: 'test-user',
+        );
+        await _pumpUntil(() => throttled.callsForPath('throttled') >= 1);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(manager.pendingCount, 1, reason: '429 must not drop the write');
+        expect(failures, isEmpty);
+
+        status = 200;
+        manager.activateOwnerScope('test-user');
+        await _pumpUntil(() => manager.pendingCount == 0);
+
+        expect(throttled.callsForPath('throttled'), 2);
+        expect(failures, isEmpty);
+        manager.onOperationFailed = null;
+        DioClient().dio.httpClientAdapter = counting;
+      },
+    );
+
+    test(
+      'a request timeout status keeps the write for the next replay',
+      () async {
+        final manager = OfflineQueueManager();
+        final timedOut = _ScriptAdapter((o, b, n) => _json('{}', 408));
+        DioClient().dio.httpClientAdapter = timedOut;
+
+        await manager.enqueue(
+          endpoint: 'slow-write',
+          method: 'PUT',
+          ownerScope: 'test-user',
+        );
+        await _pumpUntil(() => timedOut.callsForPath('slow-write') >= 1);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(manager.pendingCount, 1);
+        DioClient().dio.httpClientAdapter = counting;
+      },
+    );
+
     test(
       'owner switch cancels in-flight replay and never starts the next op',
       () async {
