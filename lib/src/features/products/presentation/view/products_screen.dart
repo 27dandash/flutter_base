@@ -20,7 +20,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   /// rxdart subject we feed each keystroke into; emits after 350 ms of
   /// silence so search calls are debounced on the *bloc* side.
-  final BehaviorSubject<String> _searchSubject = BehaviorSubject.seeded('');
+  final PublishSubject<String> _searchSubject = PublishSubject<String>();
   StreamSubscription<String>? _searchSub;
 
   @override
