@@ -28,7 +28,7 @@
 2. `setForegroundPresentationOptions`: إيقاف عرض الـ OS للإشعارات في الـ foreground.
 3. تسجيل الـ background handler.
 4. الاشتراك في `onMessage` و`onMessageOpenedApp` و`onTokenRefresh`.
-5. طلب الصلاحيات (لو `requestPermissionsOnInitialize` = true وده الافتراضي).
+5. طلب الصلاحيات (لو `requestPermissionsOnInitialize` = true وده الافتراضي). الطلب بيحصل **مرة واحدة من Firebase بس** (`requestPermission`): بيغطي iOS وكمان `POST_NOTIFICATIONS` على أندرويد 13+. الـ `flutter_local_notifications` مبيطلبش إذن أبدًا، عشان مايظهرش dialog تاني بعد الرفض (مخالف لسياسة جوجل). لو حد نادى `requestPermissions()` في نفس الوقت بيشاركوا نفس الطلب.
 6. `getInitialMessage`: لو التطبيق اتفتح من إشعار، بيتعمل routing ليه.
 7. قراءة الـ FCM token (من غير ما تعطّل الـ initialize، وبتتعاد لحد 5 محاولات كل 3 ثواني لو فشلت).
 

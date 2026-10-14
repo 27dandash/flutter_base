@@ -62,6 +62,31 @@ void main() {
     await platform.close();
   });
 
+  test('initialize and an explicit request share one permission prompt', () async {
+    final gate = Completer<void>();
+    final platform = FakeNotificationPlatform(
+      blockOn: 'permissions',
+      blockGate: gate,
+    );
+
+    final initialization = NotificationManager.instance.initialize(
+      router: _RecordingRouter(),
+      platform: platform,
+    );
+    await settle();
+    final explicit = NotificationManager.instance.requestPermissions();
+    gate.complete();
+
+    expect(await explicit, isTrue);
+    expect(await initialization, isTrue);
+    expect(platform.permissionCalls, 1);
+
+    // A later, separate request is a new prompt (the OS decides what to show).
+    await NotificationManager.instance.requestPermissions();
+    expect(platform.permissionCalls, 2);
+    await platform.close();
+  });
+
   test('a failing non-critical step does not fail initialization', () async {
     final platform = FakeNotificationPlatform(
       failOn: {'options', 'permissions', 'initial'},
