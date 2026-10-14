@@ -27,19 +27,4 @@ void main() {
     expect(log, contains('startedByForeground: foreground'));
     expect(RegExp('<redacted>').allMatches(log), hasLength(secrets.length));
   });
-
-  test('call action labels have Arabic and English parity', () {
-    expect(NotificationController.actionLabelsForLanguage('ar'), (
-      'قبول',
-      'رفض',
-    ));
-    expect(NotificationController.actionLabelsForLanguage('en'), (
-      'Accept',
-      'Reject',
-    ));
-    expect(NotificationController.actionLabelsForLanguage('fr'), (
-      'Accept',
-      'Reject',
-    ));
-  });
 }

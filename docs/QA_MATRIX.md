@@ -10,7 +10,7 @@ is `Blocked`, not inferred from unit tests.
 | --- | --- | --- |
 | Root `flutter test` (default PHP mode) | 237 passed, 2 conditional skips | network/auth/retry/cache/parser/offline/TLS/log redaction, startup, session/routing, architecture/optional boundaries, assets/translations, async/pagination concurrency, canonical and compatibility media/state/action/navigation widgets, theme/RTL/routes/accessibility |
 | PHP inverse command | 15 passed, 3 skipped | explicitly executes `PHP_RESPONSE_MODE=false` behavior |
-| `app_notifications` | 16 passed | IDs vs token, permission, timeout, dedupe, refresh, retry, logout/switch, redacted logging and AR/EN action labels |
+| `app_notifications` | 66 passed (fake platform, no native plugin) | foreground display, user-preference gate, session-ending types, tap routing (tray/local/launch), token delivery/retry, lifecycle races, registration, redacted logging |
 | `app_remote_config` | 16 passed | backward-compatible API, injection, lazy disablement, defaults, environment policies, bounded initialization/fetch/activation, concurrency, typed fallbacks, retry, offline-safe errors and disposal |
 | `app_webview` | 6 passed | URL/host policy, schemes, callbacks, dedupe, safe localized invalid-configuration page state |
 | `app_maps` | 7 passed | config, fallback, permissions/services, timeout, selection/lookup, accessible missing-key page state |

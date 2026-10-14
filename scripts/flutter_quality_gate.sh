@@ -139,9 +139,9 @@ check_root_optional_isolation() {
   local dependency_graph
   dependency_graph="$("$FLUTTER_BIN" pub deps --style=compact --no-dev)"
   if printf '%s\n' "$dependency_graph" | grep -Eiq \
-    'app_(notifications|remote_config|webview|maps|socket)|firebase_(core|messaging|remote_config)|awesome_notifications|google_maps_flutter|webview_flutter|socket_io_client'; then
+    'app_(notifications|remote_config|webview|maps|socket)|firebase_(core|messaging|remote_config)|flutter_local_notifications|awesome_notifications|google_maps_flutter|webview_flutter|socket_io_client'; then
     printf '%s\n' "$dependency_graph" | grep -Ei \
-      'app_(notifications|remote_config|webview|maps|socket)|firebase_(core|messaging|remote_config)|awesome_notifications|google_maps_flutter|webview_flutter|socket_io_client' >&2
+      'app_(notifications|remote_config|webview|maps|socket)|firebase_(core|messaging|remote_config)|flutter_local_notifications|awesome_notifications|google_maps_flutter|webview_flutter|socket_io_client' >&2
     echo "An optional concrete integration entered the root dependency graph." >&2
     return 1
   fi
@@ -413,9 +413,9 @@ check_universal_apk_isolation() {
   local entries
   entries="$(unzip -Z1 "$universal_apk")"
   if printf '%s\n' "$entries" | grep -Eiq \
-    'firebase|awesome_notifications|google_maps|webview_flutter|socket_io'; then
+    'firebase|flutter_local_notifications|awesome_notifications|google_maps|webview_flutter|socket_io'; then
     printf '%s\n' "$entries" | grep -Ei \
-      'firebase|awesome_notifications|google_maps|webview_flutter|socket_io' >&2
+      'firebase|flutter_local_notifications|awesome_notifications|google_maps|webview_flutter|socket_io' >&2
     echo "An optional concrete integration entered the Universal APK." >&2
     return 1
   fi

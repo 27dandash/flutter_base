@@ -27,6 +27,17 @@ void main() {
       expect(normalized['item_id'], 7);
     });
 
+    test('moves the transport id aside when the nested data has none', () {
+      final normalized = normalizeNotificationPayload({
+        'id': 'notification-1',
+        'data': {'type': 'order_created', 'order_id': '5'},
+      });
+
+      expect(normalized, isNot(contains('id')));
+      expect(normalized['notification_id'], 'notification-1');
+      expect(normalized['order_id'], '5');
+    });
+
     test('flattens a JSON object string and ignores malformed data', () {
       expect(
         normalizeNotificationPayload({
