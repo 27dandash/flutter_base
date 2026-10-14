@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -27,11 +26,7 @@ class Helpers {
   }
 
   static String getDeviceType() {
-    if (Platform.isIOS) {
-      return 'ios';
-    } else {
-      return 'android';
-    }
+    return defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
   }
 
   /// Normalizes a Saudi mobile number to the canonical `9665XXXXXXXX` form.
