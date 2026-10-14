@@ -1,5 +1,4 @@
-import 'dart:io' show Platform;
-
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -23,7 +22,9 @@ class CustomLoading {
     bool forceMaterial = false,
     bool forceCupertino = false,
   }) {
-    final useCupertino = forceCupertino || (!forceMaterial && Platform.isIOS);
+    final useCupertino =
+        forceCupertino ||
+        (!forceMaterial && defaultTargetPlatform == TargetPlatform.iOS);
     final dimension = size ?? AppSize.sH40;
     final effectiveColor = color ?? AppColors.main;
 

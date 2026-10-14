@@ -20,7 +20,8 @@ class ConstantManager {
   static const int pgSize = 10;
   static const int pgFirst = 1;
   static const int maxLines = 5;
-  static String platform = Platform.isAndroid ? 'android' : 'ios';
+  static String get platform =>
+      defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios';
 
   static Map<String, dynamic>? paginateJson(int page) => {
     'page': page,

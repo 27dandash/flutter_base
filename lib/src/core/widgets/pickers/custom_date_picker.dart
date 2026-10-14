@@ -3,13 +3,11 @@
 // applies to this file.
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:io' show Platform;
-
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../config/res/config_imports.dart';
 import '../../navigation/navigator.dart';
 
 /// Picks a date adaptively:
@@ -27,12 +25,18 @@ Future<DateTime?> showCustomDatePicker({
 }) async {
   final BuildContext context = Go.context;
   final DateTime now = DateTime.now();
-  final DateTime initial = initialDate ?? now;
   final DateTime first = firstDate ?? now;
   final DateTime last = lastDate ?? now.add(const Duration(days: 365 * 4));
+  // showDatePicker asserts that the initial date lies inside the range; clamp
+  // a caller-supplied value (for example a past date with the default
+  // firstDate) instead of crashing in debug and misbehaving in release.
+  final DateTime requested = initialDate ?? now;
+  final DateTime initial = requested.isBefore(first)
+      ? first
+      : (requested.isAfter(last) ? last : requested);
   final locale = Localizations.localeOf(context);
 
-  final DateTime? picked = Platform.isIOS
+  final DateTime? picked = defaultTargetPlatform == TargetPlatform.iOS
       ? await _showCupertino(
           context: context,
           initial: initial,
@@ -66,7 +70,7 @@ Future<DateTime?> _showCupertino({
   DateTime temp = initial;
   return showModalBottomSheet<DateTime>(
     context: context,
-    backgroundColor: AppColors.white,
+    backgroundColor: Theme.of(context).bottomSheetTheme.modalBackgroundColor,
     showDragHandle: true,
     builder: (sheetCtx) => SafeArea(
       child: SizedBox(
@@ -84,7 +88,7 @@ Future<DateTime?> _showCupertino({
             ),
             CupertinoButton(
               onPressed: () => Navigator.of(sheetCtx).pop(temp),
-              child: const Text('OK'),
+              child: Text(MaterialLocalizations.of(sheetCtx).okButtonLabel),
             ),
           ],
         ),

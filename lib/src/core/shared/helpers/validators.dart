@@ -2,6 +2,14 @@ import '../../../config/language/locale_keys.g.dart';
 import '../extensions/string_extension.dart';
 
 class Validators {
+  // Anchored on both ends, so trailing garbage is rejected, and each domain
+  // label may contain hyphens (user@my-company.com) but not start or end with
+  // one. A TLD of at least two letters is required.
+  static final RegExp _emailPattern = RegExp(
+    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+    r'(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$',
+  );
+
   static String? validateEmpty(String? value, {String? fieldTitle}) {
     if (value == null || value.isEmpty) {
       return fieldTitle == null
@@ -21,10 +29,7 @@ class Validators {
           : '${LocaleKeys.filedValidation} $fieldTitle';
     } else if (RegExp(r'[<>]').hasMatch(value!)) {
       return LocaleKeys.scripInjectionValidate;
-    } else if (!RegExp(
-      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.["
-      r'a-zA-Z]+',
-    ).hasMatch(value)) {
+    } else if (!_emailPattern.hasMatch(value.trim())) {
       return LocaleKeys.mailValidation;
     }
     return null;
@@ -39,11 +44,10 @@ class Validators {
       r"^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[@#$%^&*()_+=\[\]{};:,.<>?/\\|`~!-]).{8,16}$",
     ).hasMatch(value!)) {
       return LocaleKeys.passSymbols;
-    } else if (value.length > 16) {
-      return LocaleKeys.passValidation;
-    } else if (RegExp(r'[<>]').hasMatch(value)) {
-      return LocaleKeys.scripInjectionValidate;
     }
+    // No separate length or '<'/'>' checks: the pattern above already bounds
+    // the length (8-16) and accepts '<' and '>' as symbols. Rejecting them
+    // afterwards made the pattern and the validator disagree.
     return null;
   }
 

@@ -9,15 +9,15 @@ class PageRouterBuilder {
   PageRouterCreator _creator = CustomPageRouterCreator();
 
   void initAppRouter({PlatformConfig? config}) {
-    final platform = Platform.operatingSystem;
-    switch (platform) {
-      case 'android':
+    // defaultTargetPlatform (not dart:io) so this also runs on the web.
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
         _creator = config?.android ?? MaterialPageRouterCreator();
         break;
-      case 'ios':
+      case TargetPlatform.iOS:
         _creator = config?.ios ?? CupertinoPageRouterCreator();
         break;
-      case 'windows':
+      case TargetPlatform.windows:
         _creator =
             config?.web ??
             CustomPageRouterCreator(parentTransition: TransitionType.fade);

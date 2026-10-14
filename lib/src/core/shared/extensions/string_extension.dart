@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 extension FormatString on String {
   String capitalize() {
+    if (isEmpty) return this;
     return '${this[0].toUpperCase()}${substring(1)}';
   }
 
@@ -19,9 +20,12 @@ extension FormatString on String {
         .replaceAll('٩', '9');
   }
 
+  /// Formats a numeric string with thousand separators; a value that is not a
+  /// number is returned unchanged instead of throwing.
   String toCurrency() {
-    final formatter = NumberFormat('#,###');
-    return formatter.format(double.parse(this));
+    final value = double.tryParse(this);
+    if (value == null) return this;
+    return NumberFormat('#,###').format(value);
   }
 
   void copyToClipboard() {
@@ -37,10 +41,11 @@ extension FormatString on String {
   }
 
   String toCamelCase() {
+    if (isEmpty) return this;
     return this[0].toUpperCase() +
         substring(1).replaceAllMapped(
           RegExp('[_-](.)'),
-          (Match match) => match.group(1)!.toLowerCase(),
+          (Match match) => match.group(1)!.toUpperCase(),
         );
   }
 }
@@ -66,54 +71,54 @@ extension DateTimeFormatHelper on DateTime {
   }
 
   String toFullDate({String? locale, String key = '-'}) {
-    return DateFormat('yyyy${key}MM${key}dd').format(this);
+    return DateFormat('yyyy${key}MM${key}dd', locale).format(this);
   }
 
   String toFullDateTime([String? locale]) {
-    return DateFormat('yyyy-MM-dd HH:mm').format(this);
+    return DateFormat('yyyy-MM-dd HH:mm', locale).format(this);
   }
 
   String toDay([String? locale]) {
-    return DateFormat('EEEE').format(this);
+    return DateFormat('EEEE', locale).format(this);
   }
 
   String toMonth([String? locale]) {
-    return DateFormat('MMMM').format(this);
+    return DateFormat('MMMM', locale).format(this);
   }
 
   String toMonthShort([String? locale]) {
-    return DateFormat('MMM').format(this);
+    return DateFormat('MMM', locale).format(this);
   }
 
   String toDayMonth([String? locale]) {
-    return DateFormat('dd MMMM').format(this);
+    return DateFormat('dd MMMM', locale).format(this);
   }
 
   String toDayMonthShort([String? locale]) {
-    return DateFormat('dd MMM').format(this);
+    return DateFormat('dd MMM', locale).format(this);
   }
 
   String toDayMonthYear([String? locale]) {
-    return DateFormat('dd MMMM yyyy').format(this);
+    return DateFormat('dd MMMM yyyy', locale).format(this);
   }
 
   String toDayMonthYearShort([String? locale]) {
-    return DateFormat('dd MMM yyyy').format(this);
+    return DateFormat('dd MMM yyyy', locale).format(this);
   }
 
   String toDayMonthYearTime([String? locale]) {
-    return DateFormat('dd MMMM yyyy HH:mm').format(this);
+    return DateFormat('dd MMMM yyyy HH:mm', locale).format(this);
   }
 
   String toDayMonthYearTimeShort([String? locale]) {
-    return DateFormat('dd MMM yyyy HH:mm').format(this);
+    return DateFormat('dd MMM yyyy HH:mm', locale).format(this);
   }
 
   String toDayMonthYearTimeSeconds([String? locale]) {
-    return DateFormat('dd MMMM yyyy HH:mm:ss').format(this);
+    return DateFormat('dd MMMM yyyy HH:mm:ss', locale).format(this);
   }
 
   String toDayMonthYearTimeSecondsShort([String? locale]) {
-    return DateFormat('dd MMM yyyy HH:mm:ss').format(this);
+    return DateFormat('dd MMM yyyy HH:mm:ss', locale).format(this);
   }
 }

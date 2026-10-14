@@ -26,6 +26,47 @@ void main() {
       expect(Validators.validatePassword('weak'), LocaleKeys.passSymbols);
     });
 
+    test('email accepts hyphenated and multi-label domains', () {
+      for (final ok in [
+        'user@my-company.com',
+        'first.last+tag@mail.example.co.uk',
+        'a_b@x1.io',
+      ]) {
+        expect(Validators.validateEmail(ok), isNull, reason: ok);
+      }
+    });
+
+    test('email rejects trailing garbage and malformed domains', () {
+      for (final bad in [
+        'a@b.co garbage',
+        'user@example.com.',
+        'user@-bad.com',
+        'user@bad-.com',
+        'user@nodot',
+        'user@.com',
+        'user@@example.com',
+        '@example.com',
+      ]) {
+        expect(
+          Validators.validateEmail(bad),
+          LocaleKeys.mailValidation,
+          reason: bad,
+        );
+      }
+    });
+
+    test('password rules agree with their symbol set', () {
+      // '<' and '>' are listed symbols, so they must not be rejected later.
+      expect(Validators.validatePassword('Abcdef1<'), isNull);
+      expect(Validators.validatePassword('Abcdef1>x'), isNull);
+      // Length is bounded by the pattern alone.
+      expect(
+        Validators.validatePassword('Abcdef1!Abcdef1!x'),
+        LocaleKeys.passSymbols,
+      );
+      expect(Validators.validatePassword('Ab1!'), LocaleKeys.passSymbols);
+    });
+
     test('Saudi identifiers and formatted phone values are validated', () {
       expect(Validators.validateSaudiPhone('+966 50-123-4567'), isNull);
       expect(Validators.validateSaudiPhone('٠٥٠ ١٢٣ ٤٥٦٧'), isNull);
