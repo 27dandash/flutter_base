@@ -100,6 +100,18 @@ final class GenericSocketClient {
     }
   }
 
+  /// Stops reacting to the transport's `disconnected` event.
+  ///
+  /// Socket.IO emits `disconnect` for a *local* `disconnect()` call too. An
+  /// intentional disconnect (explicit, network loss, app paused) must not be
+  /// mistaken for a dropped connection: it would overwrite the `paused` state
+  /// and schedule a reconnect the caller asked not to have.
+  void _detachDisconnectListener() {
+    final subscription = _disconnectSubscription;
+    _disconnectSubscription = null;
+    if (subscription != null) unawaited(subscription.cancel());
+  }
+
   void _replaceTransport(SocketTransport transport) {
     _disconnectSubscription?.cancel();
     _errorSubscription?.cancel();
@@ -158,6 +170,7 @@ final class GenericSocketClient {
     if (!available) {
       _invalidateConnection();
       _reconnectTimer?.cancel();
+      _detachDisconnectListener();
       _transport?.disconnect();
       _setState(AppSocketState.paused);
     } else if (_appActive && _allowReconnect) {
@@ -171,6 +184,7 @@ final class GenericSocketClient {
     if (!active) {
       _invalidateConnection();
       _reconnectTimer?.cancel();
+      _detachDisconnectListener();
       _transport?.disconnect();
       _setState(AppSocketState.paused);
     } else if (_networkAvailable && _allowReconnect) {
@@ -220,6 +234,7 @@ final class GenericSocketClient {
     if (logout) _allowReconnect = false;
     _invalidateConnection();
     _reconnectTimer?.cancel();
+    _detachDisconnectListener();
     _transport?.disconnect();
     _setState(AppSocketState.disconnected);
   }

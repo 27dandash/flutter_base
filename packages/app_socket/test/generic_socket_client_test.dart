@@ -10,6 +10,9 @@ final class _Transport implements SocketTransport {
   final Completer<void>? connectGate;
   bool connectFails = false;
   bool connected = false;
+
+  /// Real Socket.IO fires `disconnect` for a local `disconnect()` as well.
+  bool emitsOnLocalDisconnect = false;
   var connectCalls = 0;
   var disconnectCalls = 0;
   final events = <String, List<void Function(Object?)>>{};
@@ -35,6 +38,7 @@ final class _Transport implements SocketTransport {
   void disconnect() {
     disconnectCalls++;
     connected = false;
+    if (emitsOnLocalDisconnect) disconnects.add(null);
   }
 
   @override
@@ -52,6 +56,7 @@ final class _Transport implements SocketTransport {
 final class _Factory implements SocketTransportFactory {
   final created = <_Transport>[];
   bool failNext = false;
+  bool emitsOnLocalDisconnect = false;
   Completer<void>? nextConnectGate;
   @override
   SocketTransport create({
@@ -60,7 +65,8 @@ final class _Factory implements SocketTransportFactory {
     required Map<String, dynamic> authentication,
   }) {
     final transport = _Transport(connectGate: nextConnectGate)
-      ..connectFails = failNext;
+      ..connectFails = failNext
+      ..emitsOnLocalDisconnect = emitsOnLocalDisconnect;
     failNext = false;
     nextConnectGate = null;
     created.add(transport);
@@ -253,5 +259,68 @@ void main() {
     expect(client.state, AppSocketState.connected);
     expect(factory.created, hasLength(1));
     await client.dispose();
+  });
+
+  group('with a transport that reports local disconnects (Socket.IO)', () {
+    test('an explicit disconnect stays disconnected', () async {
+      final factory = _Factory()..emitsOnLocalDisconnect = true;
+      final client = _client(factory);
+      await client.connect();
+      expect(client.state, AppSocketState.connected);
+
+      await client.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(client.state, AppSocketState.disconnected);
+      expect(factory.created, hasLength(1), reason: 'no automatic reconnect');
+      await client.dispose();
+    });
+
+    test('network loss ends in paused, not disconnected', () async {
+      final factory = _Factory()..emitsOnLocalDisconnect = true;
+      final client = _client(factory);
+      await client.connect();
+
+      client.setNetworkAvailable(false);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(client.state, AppSocketState.paused);
+
+      client.setNetworkAvailable(true);
+      await _pumpUntil(() => client.state == AppSocketState.connected);
+      expect(factory.created, hasLength(2));
+      await client.dispose();
+    });
+
+    test(
+      'backgrounding the app ends in paused and resumes on return',
+      () async {
+        final factory = _Factory()..emitsOnLocalDisconnect = true;
+        final client = _client(factory);
+        await client.connect();
+
+        client.setAppActive(false);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(client.state, AppSocketState.paused);
+        expect(factory.created, hasLength(1));
+
+        client.setAppActive(true);
+        await _pumpUntil(() => client.state == AppSocketState.connected);
+        await client.dispose();
+      },
+    );
+
+    test('a genuine server-side drop still reconnects', () async {
+      final factory = _Factory()..emitsOnLocalDisconnect = true;
+      final client = _client(factory);
+      await client.connect();
+
+      factory.created.single.connected = false;
+      factory.created.single.disconnects.add(null);
+
+      await _pumpUntil(() => factory.created.length == 2);
+      await _pumpUntil(() => client.state == AppSocketState.connected);
+      await client.dispose();
+    });
   });
 }
