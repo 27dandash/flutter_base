@@ -3,49 +3,77 @@ import 'package:dio/dio.dart';
 /// Owns a registry of active CancelTokens keyed by an arbitrary string
 /// (e.g. "search:products" or "GET:/users/5"). Allows callers to cancel
 /// older in-flight requests when issuing a new one.
+///
+/// A request releases the key **by token identity**: a request that was
+/// superseded must not remove the token of the request that replaced it,
+/// otherwise the newer request could no longer be cancelled (for example by
+/// [cancelAll] at logout) or superseded by a later one.
 class RequestCancellationManager {
   RequestCancellationManager._();
   static final RequestCancellationManager _instance =
       RequestCancellationManager._();
   factory RequestCancellationManager() => _instance;
 
-  final Map<String, CancelToken> _tokens = {};
+  final Map<String, _Entry> _entries = {};
 
   CancelToken getToken(String key, {bool cancelPrevious = true}) {
+    final existing = _entries[key];
     if (cancelPrevious) {
-      final old = _tokens.remove(key);
-      if (old != null && !old.isCancelled) {
-        old.cancel('superseded:$key');
+      _entries.remove(key);
+      if (existing != null && !existing.token.isCancelled) {
+        existing.token.cancel('superseded:$key');
       }
-    } else if (_tokens.containsKey(key)) {
-      final existing = _tokens[key]!;
-      if (!existing.isCancelled) return existing;
+    } else if (existing != null && !existing.token.isCancelled) {
+      // Callers share the in-flight token; it is released by the last one.
+      existing.users++;
+      return existing.token;
     }
-    final token = CancelToken();
-    _tokens[key] = token;
-    return token;
+    final entry = _Entry(CancelToken());
+    _entries[key] = entry;
+    return entry.token;
   }
 
-  void release(String key) {
-    _tokens.remove(key);
+  /// Releases one user of [token] for [key]. Without a [token] the key is
+  /// cleared unconditionally (legacy behavior). A stale [token] — one that
+  /// has already been replaced for [key] — is ignored.
+  void release(String key, [CancelToken? token]) {
+    final entry = _entries[key];
+    if (entry == null) return;
+    if (token == null) {
+      _entries.remove(key);
+      return;
+    }
+    if (!identical(entry.token, token)) return;
+    entry.users--;
+    if (entry.users <= 0) _entries.remove(key);
   }
 
   void cancel(String key, [String? reason]) {
-    final t = _tokens.remove(key);
-    if (t != null && !t.isCancelled) t.cancel(reason ?? 'cancelled:$key');
+    final entry = _entries.remove(key);
+    if (entry != null && !entry.token.isCancelled) {
+      entry.token.cancel(reason ?? 'cancelled:$key');
+    }
   }
 
   void cancelAll([String? reason]) {
-    for (final t in _tokens.values) {
-      if (!t.isCancelled) t.cancel(reason ?? 'cancelAll');
+    final entries = List.of(_entries.values);
+    _entries.clear();
+    for (final entry in entries) {
+      if (!entry.token.isCancelled) entry.token.cancel(reason ?? 'cancelAll');
     }
-    _tokens.clear();
   }
 
   bool isActive(String key) {
-    final t = _tokens[key];
-    return t != null && !t.isCancelled;
+    final entry = _entries[key];
+    return entry != null && !entry.token.isCancelled;
   }
 
-  int get activeCount => _tokens.length;
+  int get activeCount => _entries.length;
+}
+
+final class _Entry {
+  _Entry(this.token);
+
+  final CancelToken token;
+  int users = 1;
 }
