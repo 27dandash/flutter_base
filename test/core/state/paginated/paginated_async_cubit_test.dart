@@ -142,5 +142,92 @@ void main() {
       await run;
       expect(cubit.isClosed, isTrue);
     });
+
+    group('local mutations while a fetch is in flight', () {
+      test(
+        'removeLocal during load-more does not leave the footer loading',
+        () async {
+          final pending = Completer<Either<Failure, PaginatedData<int>>>();
+          final cubit = _TestPaginationCubit()
+            ..responses.add((page, _) async => Right(_page(page, [1, 2])))
+            ..responses.add((_, _) => pending.future);
+          await cubit.fetchInitialData();
+
+          final loadMore = cubit.loadMore();
+          expect(cubit.state.status, BaseStatus.loadingMore);
+          cubit.removeLocal((item) => item == 1);
+          pending.complete(Right(_page(2, [3, 4])));
+          await loadMore;
+
+          expect(cubit.state.status, BaseStatus.success);
+          expect(cubit.state.data.items, [2]);
+          await cubit.close();
+        },
+      );
+
+      test('insertLocal during the first load settles to success', () async {
+        final pending = Completer<Either<Failure, PaginatedData<int>>>();
+        final cubit = _TestPaginationCubit()
+          ..responses.add((_, _) => pending.future);
+
+        final load = cubit.fetchInitialData();
+        cubit.insertLocal(7);
+        pending.complete(Right(_page(1, [1, 2])));
+        await load;
+
+        expect(cubit.state.status, BaseStatus.success);
+        expect(cubit.state.data.items, [7]);
+        await cubit.close();
+      });
+
+      test('removeLocal on an empty list does not keep the skeleton', () async {
+        final pending = Completer<Either<Failure, PaginatedData<int>>>();
+        final cubit = _TestPaginationCubit()
+          ..responses.add((_, _) => pending.future);
+
+        final load = cubit.fetchInitialData();
+        cubit.removeLocal((_) => true);
+        pending.complete(Right(_page(1, [1])));
+        await load;
+
+        expect(cubit.state.status, BaseStatus.success);
+        expect(cubit.state.isFirstLoad, isFalse);
+        await cubit.close();
+      });
+
+      test('pagination works again after a local mutation', () async {
+        final pending = Completer<Either<Failure, PaginatedData<int>>>();
+        final cubit = _TestPaginationCubit()
+          ..responses.add((page, _) async => Right(_page(page, [1, 2])))
+          ..responses.add((_, _) => pending.future)
+          ..responses.add((page, _) async => Right(_page(page, [5, 6])));
+        await cubit.fetchInitialData();
+
+        final stale = cubit.loadMore();
+        cubit.updateLocal((item) => item == 2, (item) => 20);
+        pending.complete(Right(_page(2, [3, 4])));
+        await stale;
+        expect(cubit.canLoadMore, isTrue);
+
+        await cubit.loadMore();
+        expect(cubit.state.data.items, [1, 20, 5, 6]);
+        await cubit.close();
+      });
+
+      test('an error status is preserved by a local mutation', () async {
+        final cubit = _TestPaginationCubit()
+          ..responses.add((page, _) async => Right(_page(page, [1, 2])))
+          ..responses.add((_, _) async => const Left(NetworkFailure()));
+        await cubit.fetchInitialData();
+        await cubit.loadMore();
+        expect(cubit.state.status, BaseStatus.error);
+
+        cubit.insertLocal(9);
+
+        expect(cubit.state.status, BaseStatus.error);
+        expect(cubit.state.data.items.first, 9);
+        await cubit.close();
+      });
+    });
   });
 }

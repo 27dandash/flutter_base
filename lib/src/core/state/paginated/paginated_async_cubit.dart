@@ -154,29 +154,55 @@ abstract class PaginatedAsyncCubit<T> extends Cubit<PaginatedState<T>> {
 
   // ── Local list mutations (optimistic flows) ───────────────────────
 
-  void insertLocal(T item, {int at = 0}) {
-    if (isClosed) return;
+  /// A local mutation supersedes any fetch still in flight: its result is
+  /// discarded (see the `operation` guards above), so it can never emit the
+  /// state that would end a loading phase. The mutation therefore settles the
+  /// loading status itself; otherwise `loading` (skeleton) or `loadingMore`
+  /// (footer spinner, which also blocks [canLoadMore]) would last forever.
+  BaseStatus _statusAfterLocalMutation() {
     _operation++;
     _isFetching = false;
+    final status = state.status;
+    return status.isLoading || status.isLoadingMore
+        ? BaseStatus.success
+        : status;
+  }
+
+  void insertLocal(T item, {int at = 0}) {
+    if (isClosed) return;
+    final status = _statusAfterLocalMutation();
     final items = [...state.data.items]..insert(at, item);
-    emit(state.copyWith(data: state.data.copyWith(items: items)));
+    emit(
+      state.copyWith(
+        data: state.data.copyWith(items: items),
+        status: status,
+      ),
+    );
   }
 
   void updateLocal(bool Function(T) where, T Function(T) update) {
     if (isClosed) return;
-    _operation++;
-    _isFetching = false;
+    final status = _statusAfterLocalMutation();
     final items = state.data.items
         .map((e) => where(e) ? update(e) : e)
         .toList();
-    emit(state.copyWith(data: state.data.copyWith(items: items)));
+    emit(
+      state.copyWith(
+        data: state.data.copyWith(items: items),
+        status: status,
+      ),
+    );
   }
 
   void removeLocal(bool Function(T) where) {
     if (isClosed) return;
-    _operation++;
-    _isFetching = false;
+    final status = _statusAfterLocalMutation();
     final items = state.data.items.where((e) => !where(e)).toList();
-    emit(state.copyWith(data: state.data.copyWith(items: items)));
+    emit(
+      state.copyWith(
+        data: state.data.copyWith(items: items),
+        status: status,
+      ),
+    );
   }
 }
