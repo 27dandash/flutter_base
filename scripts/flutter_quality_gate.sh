@@ -104,7 +104,7 @@ resolve_flutter_sdk() {
   local value
 
   if [[ -f "android/local.properties" ]]; then
-    while IFS='=' read -r key value; do
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
       if [[ "$key" == "flutter.sdk" ]]; then
         configured_sdk="$value"
         break

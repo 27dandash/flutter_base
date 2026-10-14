@@ -12,7 +12,7 @@
 #   ./scripts/new_feature.sh blog_posts post   # plural feature, singular entity
 #
 # After running:
-#   1) dart run build_runner build --delete-conflicting-outputs   (wire DI)
+#   1) dart run build_runner build   (wire DI)
 #   2) Add the endpoint to lib/src/core/network/api_endpoints.dart
 #   3) flutter analyze
 #
@@ -315,6 +315,6 @@ EOF
 echo "✓ Created \$(find "$ROOT" -name '*.dart' | wc -l | tr -d ' ') Dart files."
 echo
 echo "Next steps:"
-echo "  1) dart run build_runner build --delete-conflicting-outputs"
+echo "  1) dart run build_runner build"
 echo "  2) Add the real endpoint to lib/src/core/network/api_endpoints.dart"
 echo "  3) flutter analyze"

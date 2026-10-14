@@ -7,14 +7,19 @@ TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/flutter-base-codegen.XXXXXX")"
 trap 'find "$TEMP_ROOT" -depth -delete 2>/dev/null || true' EXIT
 
 configured_sdk=""
-while IFS='=' read -r key value; do
+while IFS='=' read -r key value || [[ -n "$key" ]]; do
   if [[ "$key" == "flutter.sdk" ]]; then
     configured_sdk="$value"
     break
   fi
-done < "$PROJECT_ROOT/android/local.properties"
-DART_BIN="$configured_sdk/bin/dart"
-[[ -x "$DART_BIN" ]] || {
+done < "$PROJECT_ROOT/android/local.properties" 2>/dev/null || true
+if [[ -n "$configured_sdk" && -x "$configured_sdk/bin/dart" ]]; then
+  DART_BIN="$configured_sdk/bin/dart"
+else
+  # local.properties is generated and git-ignored; fall back to PATH.
+  DART_BIN="$(command -v dart || true)"
+fi
+[[ -n "$DART_BIN" && -x "$DART_BIN" ]] || {
   echo "Configured Dart SDK is unavailable." >&2
   exit 2
 }
