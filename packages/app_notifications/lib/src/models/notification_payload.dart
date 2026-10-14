@@ -1,8 +1,5 @@
 import 'dart:ui';
 
-import 'package:awesome_notifications/awesome_notifications.dart'
-    hide NotificationChannel;
-
 import 'notification_enums.dart';
 import 'notification_payload_normalizer.dart';
 
@@ -76,55 +73,6 @@ final class NotificationPayload {
       sender: payload['sender']?.toString(),
       senderModel: payload['sender_model']?.toString(),
       data: payload,
-      receivedAt: DateTime.now(),
-    );
-  }
-
-  factory NotificationPayload.fromReceivedNotification(
-    ReceivedNotification n, {
-    String? languageCode,
-  }) {
-    final lang =
-        languageCode ?? PlatformDispatcher.instance.locale.languageCode;
-    final isAr = lang == 'ar';
-
-    final payloadMap = normalizeNotificationPayload(<String, dynamic>{
-      if (n.payload != null) ...n.payload!,
-      'title': n.title ?? '',
-      'body': n.body ?? '',
-    });
-
-    return NotificationPayload(
-      id: n.id?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _pick(
-        payloadMap,
-        isAr: isAr,
-        arKey: 'title_ar',
-        enKey: 'title_en',
-        fallbackKey: 'title',
-      ),
-      body: _pick(
-        payloadMap,
-        isAr: isAr,
-        arKey: 'body_ar',
-        enKey: 'body_en',
-        fallbackKey: 'body',
-      ),
-      type: _parseEnum(
-        NotificationType.values,
-        payloadMap['type']?.toString(),
-        NotificationType.message,
-      ),
-      channel: _parseEnum(
-        NotificationChannel.values,
-        n.channelKey,
-        NotificationChannel.general,
-      ),
-      imageUrl: n.bigPicture ?? n.largeIcon,
-      itemId: payloadMap['item_id']?.toString(),
-      sender: payloadMap['sender']?.toString(),
-      senderModel: payloadMap['sender_model']?.toString(),
-      data: payloadMap,
       receivedAt: DateTime.now(),
     );
   }

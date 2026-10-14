@@ -70,8 +70,9 @@ and device matrix before removing the plugin declaration.
 |---|---:|---|---|---|
 | geolocator | 14.0.3 | app_maps | Yes | Latest; optional only |
 | google_maps_flutter | 2.18.0 | app_maps | Yes | Latest; optional only |
-| awesome_notifications | 0.12.1 | app_notifications | Yes | Latest; optional only |
-| awesome_notifications_fcm | 0.12.0 | app_notifications | Yes | Latest; optional only |
+| firebase_messaging | 16.7.0 | app_notifications | Yes | Replaces Awesome Notifications; SwiftPM-capable; optional only |
+| flutter_local_notifications | 19.5.0 | app_notifications | Yes | Foreground display; SwiftPM-capable; optional only |
+| firebase_core | 4.15.0 | app_notifications | Yes | Required by firebase_messaging; optional only |
 | firebase_core | 4.14.0 | app_remote_config | Yes | Latest; optional only |
 | firebase_remote_config | 6.6.0 | app_remote_config | Yes | Latest; optional only |
 | socket_io_client | 3.1.6 | app_socket | No | Latest; optional only |
