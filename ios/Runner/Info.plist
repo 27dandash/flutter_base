@@ -31,6 +31,16 @@
 	<string>Camera access is used only when you choose to take a photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Photo library access is used only when you choose an image.</string>
+	<!-- LauncherHelper: canLaunchUrl only probes schemes listed here. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>instagram</string>
+		<string>twitter</string>
+		<string>fb</string>
+		<string>snapchat</string>
+		<string>snssdk1233</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
