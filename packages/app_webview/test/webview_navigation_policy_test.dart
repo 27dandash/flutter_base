@@ -133,4 +133,76 @@ void main() {
     expect(guard.completeOnce(), isTrue);
     expect(guard.completeOnce(), isFalse);
   });
+
+  group('frame and resource rules', () {
+    final policy = WebViewNavigationPolicy(
+      AppWebViewConfig(
+        initialUri: Uri.parse('https://pay.example.com/start'),
+        title: 'Pay',
+        allowedHosts: const {'pay.example.com'},
+        successMatcher: (uri) => uri.path == '/done',
+      ),
+    );
+
+    test('a sub-frame may navigate within allowed hosts only', () {
+      expect(
+        policy
+            .evaluateFrame('https://pay.example.com/3ds', isMainFrame: false)
+            .action,
+        WebNavigationAction.navigate,
+      );
+      expect(
+        policy
+            .evaluateFrame('https://ads.evil.test/x', isMainFrame: false)
+            .action,
+        WebNavigationAction.block,
+      );
+    });
+
+    test('a sub-frame can never complete the flow or open an app', () {
+      expect(
+        policy
+            .evaluateFrame('https://pay.example.com/done', isMainFrame: false)
+            .action,
+        WebNavigationAction.block,
+      );
+      expect(
+        policy.evaluateFrame('tel:+966500000000', isMainFrame: false).action,
+        WebNavigationAction.block,
+      );
+    });
+
+    test('the main frame keeps the full decision set', () {
+      expect(
+        policy
+            .evaluateFrame('https://pay.example.com/done', isMainFrame: true)
+            .action,
+        WebNavigationAction.completeSuccess,
+      );
+      expect(
+        policy.evaluateFrame('tel:+966500000000', isMainFrame: true).action,
+        WebNavigationAction.openExternal,
+      );
+    });
+
+    test('only an error for the page itself counts as a page failure', () {
+      final page = Uri.parse('https://pay.example.com/start?x=1');
+      expect(
+        httpErrorConcernsPage(
+          requestUri: Uri.parse('https://pay.example.com/start?x=1#top'),
+          pageUri: page,
+        ),
+        isTrue,
+      );
+      expect(
+        httpErrorConcernsPage(
+          requestUri: Uri.parse('https://pay.example.com/favicon.ico'),
+          pageUri: page,
+        ),
+        isFalse,
+      );
+      expect(httpErrorConcernsPage(requestUri: null, pageUri: page), isFalse);
+      expect(httpErrorConcernsPage(requestUri: page, pageUri: null), isFalse);
+    });
+  });
 }

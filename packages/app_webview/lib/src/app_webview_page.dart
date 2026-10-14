@@ -22,6 +22,7 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
   final WebViewCompletionGuard _completion = WebViewCompletionGuard();
   int _progress = 0;
   String? _error;
+  Uri? _pageUri;
 
   @override
   void initState() {
@@ -48,7 +49,8 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
             onProgress: (progress) {
               if (mounted) setState(() => _progress = progress);
             },
-            onPageStarted: (_) {
+            onPageStarted: (url) {
+              _pageUri = Uri.tryParse(url);
               if (mounted) setState(() => _error = null);
             },
             onPageFinished: (_) {
@@ -59,14 +61,22 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
               setState(() => _error = widget.config.messages.loadFailed);
             },
             onHttpError: (error) {
-              if (mounted) {
+              // Sub-resource failures (favicon, images, scripts) must not
+              // replace a page that loaded.
+              final concernsPage = httpErrorConcernsPage(
+                requestUri: error.request?.uri,
+                pageUri: _pageUri,
+              );
+              if (concernsPage && mounted) {
                 setState(() => _error = widget.config.messages.loadFailed);
               }
             },
             onNavigationRequest: _onNavigationRequest,
             onUrlChange: (change) {
               final url = change.url;
-              if (url != null) _handleCompletion(_policy.evaluate(url));
+              if (url == null) return;
+              _pageUri = Uri.tryParse(url);
+              _handleCompletion(_policy.evaluate(url));
             },
           ),
         );
@@ -83,7 +93,10 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
   Future<NavigationDecision> _onNavigationRequest(
     NavigationRequest request,
   ) async {
-    final decision = _policy.evaluate(request.url);
+    final decision = _policy.evaluateFrame(
+      request.url,
+      isMainFrame: request.isMainFrame,
+    );
     switch (decision.action) {
       case WebNavigationAction.navigate:
         return NavigationDecision.navigate;
@@ -96,7 +109,9 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
         _handleCompletion(decision);
         return NavigationDecision.prevent;
       case WebNavigationAction.block:
-        if (mounted) {
+        // A blocked sub-frame is dropped quietly; only the page itself
+        // being blocked is worth telling the user about.
+        if (request.isMainFrame && mounted) {
           setState(() => _error = widget.config.messages.navigationBlocked);
         }
         return NavigationDecision.prevent;
