@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:equatable/equatable.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
@@ -226,12 +227,17 @@ class UserCubit extends Cubit<UserState> with UserUtils {
       OfflineQueueManager().activateOwnerScope(_ownerScopeFor(user));
       emit(UserState(userModel: user, userStatus: UserStatus.loggedIn));
       return true;
+    } on TimeoutException catch (error, stackTrace) {
+      return _restoreUnavailable(error, stackTrace, epoch);
+    } on PlatformException catch (error, stackTrace) {
+      return _restoreUnavailable(error, stackTrace, epoch);
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint('UserCubit.init: session restore failed');
       }
-      // Already inside the transition queue: tear the session down inline so we
-      // never re-enter (and deadlock on) the tail we are currently holding.
+      // The stored session is unreadable (corrupt payload). Already inside the
+      // transition queue: tear the session down inline so we never re-enter
+      // (and deadlock on) the tail we are currently holding.
       await _performTermination(
         SessionTerminationReason.revoked,
         status: UserStatus.loggedOut,
@@ -246,6 +252,27 @@ class UserCubit extends Cubit<UserState> with UserUtils {
       );
       return false;
     }
+  }
+
+  /// The secure store could not be read in time (slow Keystore/Keychain,
+  /// device locked, plugin error). That says nothing about the stored session,
+  /// so it must not be destroyed: the user is signed out for this launch only,
+  /// the persisted credentials stay intact, and a later [init] or an explicit
+  /// login can recover. Only an unreadable/corrupt payload ends a session for
+  /// good.
+  bool _restoreUnavailable(Object error, StackTrace stackTrace, int epoch) {
+    if (kDebugMode) {
+      debugPrint('UserCubit.init: secure storage unavailable');
+    }
+    if (_isCurrentEpoch(epoch)) emit(UserState.loggedOut());
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'session restore',
+      ),
+    );
+    return false;
   }
 
   Future<void> _terminate(
@@ -350,6 +377,13 @@ class UserCubit extends Cubit<UserState> with UserUtils {
   UserModel get user => state.userModel;
   bool get isUserLoggedIn => state.isAuthenticated;
 
-  String _ownerScopeFor(UserModel user) =>
-      sha256.convert(utf8.encode(user.id)).toString();
+  /// Opaque, one-way account scope for the offline queue, or `null` when the
+  /// backend did not supply a user id. Hashing an empty id would give every
+  /// such user the same scope and let one account replay another's queued
+  /// writes, so without an id the queue stays disabled (fail closed).
+  String? _ownerScopeFor(UserModel user) {
+    final id = user.id.trim();
+    if (id.isEmpty) return null;
+    return sha256.convert(utf8.encode(id)).toString();
+  }
 }
