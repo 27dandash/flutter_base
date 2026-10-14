@@ -128,6 +128,10 @@ class OfflineQueueManager {
     }
   }
 
+  /// The scope currently allowed to replay queued writes (null = none).
+  @visibleForTesting
+  String? get activeOwnerScope => _activeOwnerScope;
+
   void activateOwnerScope(String? ownerScope) {
     final normalized = ownerScope?.trim();
     final nextOwner = normalized == null || normalized.isEmpty
