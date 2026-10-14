@@ -114,8 +114,11 @@ abstract class BaseRemoteSource {
   ///     to `"$METHOD:$endpoint"` so two calls with the same method+url
   ///     auto-cancel the first one. Override for finer control
   ///     (e.g. `"search:products"`).
-  ///   - [cancelPrevious]: if true (default), cancels any in-flight
-  ///     request with the same [cancelKey] before issuing this one.
+  ///   - [cancelPrevious]: if true, cancels any in-flight request with the
+  ///     same [cancelKey] before issuing this one. Defaults to `true` for GET
+  ///     (a newer read supersedes an older one) and `false` for every other
+  ///     verb: a write must never be cancelled client-side by a repeated tap,
+  ///     because the server may already have processed it.
   ///   - [responseType]: override the response parsing (rarely needed).
   Future<Either<Failure, T>> request<T>({
     required HttpMethod method,
@@ -128,10 +131,11 @@ abstract class BaseRemoteSource {
     bool asFormData = false,
     bool normalizeArabicDigits = true,
     String? cancelKey,
-    bool cancelPrevious = true,
+    bool? cancelPrevious,
     ResponseType? responseType,
   }) {
     final key = cancelKey ?? '${method.value}:$endpoint';
+    final supersede = cancelPrevious ?? method == HttpMethod.get;
 
     Object? requestData = body;
     Map<String, dynamic>? requestQuery = queryParameters;
@@ -156,7 +160,7 @@ abstract class BaseRemoteSource {
 
     return safeApiCall<T>(
       cancelKey: key,
-      cancelPrevious: cancelPrevious,
+      cancelPrevious: supersede,
       fromJson: fromJson,
       call: (token) => _dio.request(
         endpoint,
@@ -213,7 +217,7 @@ abstract class BaseRemoteSource {
     );
     try {
       final response = await call(token);
-      _cancelManager.release(cancelKey);
+      _cancelManager.release(cancelKey, token);
       final result = ResponseParser.parse<T>(response, fromJson);
       await result.fold(
         (failure) => _handleSessionFailure(failure, response.requestOptions),
@@ -221,7 +225,7 @@ abstract class BaseRemoteSource {
       );
       return result;
     } on DioException catch (e) {
-      _cancelManager.release(cancelKey);
+      _cancelManager.release(cancelKey, token);
       if (CancelToken.isCancel(e)) {
         return const Left(CancelledFailure());
       }
@@ -229,7 +233,7 @@ abstract class BaseRemoteSource {
       await _handleSessionFailure(failure, e.requestOptions);
       return Left(failure);
     } catch (e) {
-      _cancelManager.release(cancelKey);
+      _cancelManager.release(cancelKey, token);
       final failure = ResponseParser.parseUnknownError(e);
       await _handleSessionFailure(failure, null);
       return Left(failure);
