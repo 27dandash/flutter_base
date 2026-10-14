@@ -16,8 +16,27 @@ import 'core/shared/cubits/user_cubit/user_cubit.dart';
 final SessionNavigationCoordinator _sessionNavigation =
     SessionNavigationCoordinator(navigatorKey: Go.navigatorKey);
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  @override
+  void initState() {
+    super.initState();
+    // The BlocListener below only reacts to status *changes*. Session restore
+    // starts right after runApp and can finish before the first frame, in which
+    // case the listener would never see the transition and a signed-out user
+    // would stay on the root route instead of being sent to login. Apply the
+    // current state once the navigator exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _sessionNavigation.handle(injector<UserCubit>().state);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
