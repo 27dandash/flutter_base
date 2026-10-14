@@ -42,8 +42,14 @@ class AppTheme {
         selectionColor: AppColors.primary.withValues(alpha: 0.2),
         selectionHandleColor: AppColors.primary,
       ),
-      appBarTheme: const AppBarTheme(foregroundColor: AppColors.white),
-      iconTheme: const IconThemeData(color: AppColors.white),
+      // Content colors must contrast with the light surfaces they sit on:
+      // the app bar and the default icon color are dark ink, never white.
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.scaffoldBackground,
+        foregroundColor: AppColors.main,
+        surfaceTintColor: Colors.transparent,
+      ),
+      iconTheme: const IconThemeData(color: AppColors.main),
       inputDecorationTheme: const InputDecorationTheme(
         prefixIconColor: AppColors.border,
       ),
@@ -81,9 +87,11 @@ class AppTheme {
       ),
       dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
       appBarTheme: const AppBarTheme(
-        foregroundColor: AppColorsWithDarkMode.white,
+        backgroundColor: AppColorsWithDarkMode.scaffoldBackground,
+        foregroundColor: AppColorsWithDarkMode.main,
+        surfaceTintColor: Colors.transparent,
       ),
-      iconTheme: const IconThemeData(color: AppColorsWithDarkMode.white),
+      iconTheme: const IconThemeData(color: AppColorsWithDarkMode.main),
       inputDecorationTheme: const InputDecorationTheme(
         prefixIconColor: AppColorsWithDarkMode.border,
       ),
