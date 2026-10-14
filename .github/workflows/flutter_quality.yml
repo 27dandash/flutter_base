@@ -22,22 +22,17 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Check formatting of changed Dart files
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            base="origin/${{ github.base_ref }}"
-          else
-            base="HEAD^"
-          fi
-          mapfile -t files < <(git diff --name-only --diff-filter=ACM "$base"...HEAD -- '*.dart')
-          if ((${#files[@]})); then
-            dart format --output=none --set-exit-if-changed "${files[@]}"
-          fi
-      - run: flutter analyze
-      - run: flutter test
-      - name: Exercise the inverse PHP-envelope branch
-        run: flutter test --dart-define=PHP_RESPONSE_MODE=false test/core/network/php/php_envelope_test.dart
+      # The identity audit shells out to ripgrep, which the runner image does
+      # not guarantee.
+      - run: sudo apt-get install -y --no-install-recommends ripgrep
+      # One source of truth for the routine checks: shell syntax, agent and
+      # prompt instructions, project identity, format of the whole tree,
+      # analyzer, tests, the inverse PHP-envelope branch and root
+      # optional-integration isolation.
+      - name: Quality gate (quick)
+        run: scripts/flutter_quality_gate.sh quick
+      - name: Generated sources are reproducible
+        run: scripts/check_codegen_reproducibility.sh
       - run: flutter build apk --debug --flavor development -t lib/main_development.dart
       - run: flutter build apk --debug --flavor staging -t lib/main_staging.dart
       - run: flutter build apk --debug --flavor production -t lib/main_production.dart

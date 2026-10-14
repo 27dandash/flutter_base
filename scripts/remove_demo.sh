@@ -8,7 +8,7 @@
 #
 # Usage:
 #   ./scripts/remove_demo.sh
-#   dart run build_runner build --delete-conflicting-outputs
+#   dart run build_runner build
 #
 set -euo pipefail
 
@@ -36,4 +36,4 @@ if grep -rn "features/products\|ProductsScreen\|ProductsCubit" lib >/dev/null 2>
 fi
 
 echo
-echo "Next: dart run build_runner build --delete-conflicting-outputs"
+echo "Next: dart run build_runner build"
