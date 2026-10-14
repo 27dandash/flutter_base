@@ -55,6 +55,7 @@ final class NotificationManager {
   bool _sessionEndInFlight = false;
   Timer? _sessionEndReset;
   Timer? _tokenRetryTimer;
+  Future<bool>? _permissionRequest;
 
   FutureOr<void> Function(String token)? _ownedFcmTokenCallback;
   NotificationUrlPolicy? _ownedUrlPolicy;
@@ -200,7 +201,7 @@ final class NotificationManager {
     _subscriptions.addAll(subscriptions);
 
     if (requestPermissionsOnInitialize) {
-      await _tolerate(platform.requestPermissions);
+      await _tolerate(requestPermissions);
       if (!_isActive(generation)) return;
     }
 
@@ -288,7 +289,14 @@ final class NotificationManager {
   /// `requestPermissionsOnInitialize: false`.
   Future<bool> requestPermissions({
     Duration timeout = const Duration(seconds: 8),
-  }) async {
+  }) {
+    // Concurrent callers (for example initialize and a pre-permission screen)
+    // share one request, so the user never sees two system dialogs.
+    return _permissionRequest ??= _requestPermissions(timeout)
+        .whenComplete(() => _permissionRequest = null);
+  }
+
+  Future<bool> _requestPermissions(Duration timeout) async {
     try {
       final platform = _platform ?? defaultNotificationManagerPlatform;
       return await platform.requestPermissions().timeout(timeout);

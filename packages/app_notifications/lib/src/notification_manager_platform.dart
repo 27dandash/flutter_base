@@ -68,7 +68,11 @@ abstract interface class NotificationManagerPlatform {
 
 final class DefaultNotificationManagerPlatform
     implements NotificationManagerPlatform {
-  const DefaultNotificationManagerPlatform();
+  const DefaultNotificationManagerPlatform({this.permissionRequester});
+
+  /// Replaces the Firebase permission call. Only for tests.
+  @visibleForTesting
+  final Future<NotificationSettings> Function()? permissionRequester;
 
   static FlutterLocalNotificationsPlugin get _local =>
       FlutterLocalNotificationsPlugin();
@@ -124,33 +128,24 @@ final class DefaultNotificationManagerPlatform
         sound: false,
       );
 
+  /// Asks for permission **once, through Firebase only**.
+  ///
+  /// `FirebaseMessaging.requestPermission` already covers both platforms: the
+  /// iOS alert/badge/sound prompt and the Android 13+ `POST_NOTIFICATIONS`
+  /// prompt. Asking again through `flutter_local_notifications` would show a
+  /// second system dialog right after a refusal on Android (against Google's
+  /// guidance) and an extra request on iOS. The local plugin is initialized
+  /// with all permission requests disabled for the same reason.
   @override
   Future<bool> requestPermissions() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    final remoteGranted =
-        settings.authorizationStatus == AuthorizationStatus.authorized ||
+    final request = permissionRequester ?? _requestFirebasePermission;
+    final settings = await request();
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;
-
-    final bool? localGranted;
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      localGranted = await _local
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    } else {
-      localGranted = await _local
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-    }
-    return remoteGranted || (localGranted ?? false);
   }
+
+  static Future<NotificationSettings> _requestFirebasePermission() =>
+      _messaging.requestPermission(alert: true, badge: true, sound: true);
 
   @override
   Future<RemoteMessage?> getInitialMessage() => _messaging.getInitialMessage();

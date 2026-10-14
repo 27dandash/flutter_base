@@ -58,8 +58,12 @@ importance high, sound + vibration). Override it with `NotificationPresentation`
 
 4. Observe foreground messages (for example to refresh an unread counter) with
    `NotificationManager.instance.addListener(NotificationActionListener(...))`.
-5. `requestPermissionsOnInitialize` defaults to `true`, like the reference
-   product. Pass `false` and call `requestPermissions()` from an explicit
+5. Permission is requested **once, through Firebase only**
+   (`FirebaseMessaging.requestPermission` covers the iOS prompt and Android 13+
+   `POST_NOTIFICATIONS`); `flutter_local_notifications` never prompts, so the
+   user cannot see a second dialog right after refusing. Concurrent callers
+   share one request. `requestPermissionsOnInitialize` defaults to `true`, like
+   the reference product. Pass `false` and call `requestPermissions()` from an explicit
    user-facing flow if you prefer a pre-permission screen.
 
 `NotificationPayload.fromMap` and `normalizeNotificationPayload` accept
