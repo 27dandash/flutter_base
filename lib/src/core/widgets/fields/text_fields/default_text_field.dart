@@ -19,7 +19,7 @@ import '../../../shared/extensions/text_style_extensions.dart';
 ///     title: LocaleKeys.email,
 ///     controller: _email,
 ///     inputType: TextInputType.emailAddress,
-///     validator: Validators.email,
+///     validator: Validators.validateEmail,
 ///   )
 ///   ```
 class DefaultTextField extends StatefulWidget {

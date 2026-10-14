@@ -125,11 +125,7 @@ class Go {
 
   // back
   static void back<T extends Object?>([T? result]) {
-    if (canPop) {
-      _navigatorKey.currentState!.pop(result);
-    } else {
-      _navigatorKey.currentState!.pop(result);
-    }
+    _navigatorKey.currentState!.pop(result);
   }
 
   static void backToInitial<T extends Object?>([T? result]) {
