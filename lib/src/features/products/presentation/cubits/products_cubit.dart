@@ -33,21 +33,24 @@ class ProductsCubit extends AsyncCubit<List<ProductEntity>> {
   ///   1. Show a temporary product on top of the list immediately.
   ///   2. Fire POST in the background.
   ///   3. On success: replace the temp with the server-confirmed entity.
-  ///   4. On failure: roll back (remove the temp) and surface the failure.
+  ///   4. On failure: remove **only that temp** and surface the failure.
+  ///
+  /// Each step edits the list as it is *now* instead of restoring a snapshot,
+  /// so overlapping creates/deletes (or a refresh that landed meanwhile) are
+  /// never undone by the outcome of an unrelated request.
   Future<Either<Failure, ProductEntity>> create({
     required String name,
     required String description,
     required double price,
   }) async {
     final temp = ProductEntity(
-      id: -DateTime.now().millisecondsSinceEpoch, // negative = temp id
+      id: -_nextTempId++, // negative = temp id, unique per call
       name: name,
       description: description,
       price: price,
       status: ProductStatus.draft,
     );
-    final current = lastData ?? const <ProductEntity>[];
-    setData([temp, ...current]);
+    setData([temp, ...?lastData]);
 
     final result = await _createProduct(
       name: name,
@@ -57,20 +60,26 @@ class ProductsCubit extends AsyncCubit<List<ProductEntity>> {
 
     return result.fold(
       (failure) {
-        // Roll back.
-        setData(current);
+        setData([...?lastData].where((p) => p.id != temp.id).toList());
         return Left(failure);
       },
       (saved) {
-        // Replace temp with server-confirmed product.
-        final updated = (lastData ?? const <ProductEntity>[])
-            .map((p) => p.id == temp.id ? saved : p)
-            .toList();
-        setData(updated);
+        final items = [...?lastData];
+        final index = items.indexWhere((p) => p.id == temp.id);
+        if (index >= 0) {
+          items[index] = saved;
+        } else if (!items.any((p) => p.id == saved.id)) {
+          // The temp row vanished (a refresh replaced the list); the created
+          // product must still show up.
+          items.insert(0, saved);
+        }
+        setData(items);
         return Right(saved);
       },
     );
   }
+
+  int _nextTempId = DateTime.now().millisecondsSinceEpoch;
 
   // ── Local edit (e.g. when an edit screen returns) ────────────────
 
@@ -81,13 +90,23 @@ class ProductsCubit extends AsyncCubit<List<ProductEntity>> {
 
   // ── Delete — optimistic remove + rollback on server failure ──────
 
+  /// Removes the row immediately and puts back **that row** (at its old
+  /// position) if the server refuses. Other changes made meanwhile stay.
   Future<Either<Failure, Unit>> delete(int id) async {
-    final current = lastData ?? const <ProductEntity>[];
-    setData(current.where((p) => p.id != id).toList());
+    final before = lastData ?? const <ProductEntity>[];
+    final index = before.indexWhere((p) => p.id == id);
+    final removed = index >= 0 ? before[index] : null;
+    setData(before.where((p) => p.id != id).toList());
 
     final result = await _deleteProduct(id);
     return result.fold((failure) {
-      setData(current); // restore
+      if (removed != null) {
+        final items = [...?lastData];
+        if (!items.any((p) => p.id == id)) {
+          items.insert(index.clamp(0, items.length), removed);
+          setData(items);
+        }
+      }
       return Left(failure);
     }, Right.new);
   }
