@@ -27,8 +27,12 @@ class ResponseParser {
     if (_looksLikeHtml(data) || _looksLikeHtml(response.data)) {
       return Left(
         ParseFailure(
+          // Host and path only: the query string may carry identifiers or
+          // tokens, and a Failure's technical text can reach diagnostics.
           technical:
-              'HTML response on $status from ${response.requestOptions.uri}',
+              'HTML response on $status from '
+              '${response.requestOptions.uri.host}'
+              '${response.requestOptions.uri.path}',
         ),
       );
     }
@@ -178,6 +182,9 @@ class ResponseParser {
     if (data is! Map) return null;
     final status = data['status']?.toString().toLowerCase();
     if (status != 'fail' && status != 'error') return null;
+    // A failure envelope also carries an error code or message. A resource
+    // that merely has a field `status: "error"` (a job, an order) is data.
+    if (!data.containsKey('code') && !data.containsKey('message')) return null;
 
     final businessCode = (data['code'] as num?)?.toInt() ?? httpStatus;
     return StatusCodeHandler.handle(

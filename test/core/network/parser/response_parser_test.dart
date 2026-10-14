@@ -48,6 +48,45 @@ void main() {
       expect(result.isLeft(), true);
     });
 
+    test(
+      'a resource whose own status field is "error" is data, not a failure',
+      () {
+        final result = ResponseParser.parse<dynamic>(
+          _res({'id': 7, 'status': 'error', 'retries': 3}, 200),
+          _identity,
+        );
+        expect(result.isRight(), true);
+      },
+    );
+
+    test('a bare failure envelope with only a message is still a failure', () {
+      final result = ResponseParser.parse<dynamic>(
+        _res({'status': 'fail', 'message': 'nope'}, 200),
+        _identity,
+      );
+      expect(result.isLeft(), true);
+    });
+
+    test('an HTML page maps to ParseFailure without leaking the query', () {
+      final result = ResponseParser.parse<dynamic>(
+        Response<dynamic>(
+          requestOptions: RequestOptions(
+            path: 'https://api.test/orders/5?token=SECRET&phone=0501234567',
+          ),
+          data: '<!doctype html><html><body>Login</body></html>',
+          statusCode: 200,
+        ),
+        _identity,
+      );
+      result.fold((f) {
+        expect(f, isA<ParseFailure>());
+        expect(f.technical, contains('api.test/orders/5'));
+        expect(f.technical, isNot(contains('SECRET')));
+        expect(f.technical, isNot(contains('0501234567')));
+        expect(f.toString(), isNot(contains('SECRET')));
+      }, (_) => fail('expected Left'));
+    });
+
     test('status:fail with code 422 maps to ValidationFailure', () {
       final result = ResponseParser.parse<dynamic>(
         _res({'status': 'fail', 'code': 422}, 200),
