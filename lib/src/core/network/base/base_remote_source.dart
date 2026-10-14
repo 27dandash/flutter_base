@@ -177,9 +177,22 @@ abstract class BaseRemoteSource {
     );
   }
 
+  /// Keys whose values are secrets chosen by the user. They must reach the
+  /// backend exactly as typed: rewriting a password that contains Arabic-Indic
+  /// digits would make it differ from what the user will type next time.
+  static const Set<String> _verbatimKeys = {
+    'password',
+    'password_confirmation',
+    'current_password',
+    'new_password',
+    'old_password',
+    'confirm_password',
+  };
+
   /// Recursively walks a JSON-like structure converting Arabic-Indic
   /// digits to ASCII. Non-string leaves are returned as-is so `int`s and
-  /// `double`s pass through untouched.
+  /// `double`s pass through untouched, and the values of [_verbatimKeys]
+  /// are never rewritten.
   static Object? _normalizeArabicDigits(Object? value) {
     if (value is String) return value.toEnglishNumbers();
     if (value is Map) {
@@ -188,9 +201,15 @@ abstract class BaseRemoteSource {
       // `requestData is Map<String, dynamic>` asFormData guard both still hold
       // after normalization. A plain `.map(...)` yields Map<dynamic, Object?>,
       // which throws on the query cast and silently skips the FormData wrap.
-      return value.map<String, dynamic>(
-        (k, v) => MapEntry(k.toString(), _normalizeArabicDigits(v)),
-      );
+      return value.map<String, dynamic>((k, v) {
+        final key = k.toString();
+        return MapEntry(
+          key,
+          _verbatimKeys.contains(key.toLowerCase())
+              ? v
+              : _normalizeArabicDigits(v),
+        );
+      });
     }
     if (value is List) {
       return value.map(_normalizeArabicDigits).toList();
