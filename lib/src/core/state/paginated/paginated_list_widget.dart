@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../config/language/locale_keys.g.dart';
+import '../../shared/extensions/base_state.dart';
 import '../../widgets/handling_views/app_error_handler.dart';
 import 'paginated_async_cubit.dart';
 import 'paginated_list_config.dart';
@@ -115,6 +116,25 @@ class _PaginatedListWidgetState<C extends PaginatedAsyncCubit<T>, T>
 
   Future<void> _onRefresh() => _cubit.refresh();
 
+  /// Scrolling is the only thing that triggers [_onScroll]. When a page is too
+  /// short to scroll (a tall screen, a small page size) there are no scroll
+  /// events, so the remaining pages would never load. After the frame, keep
+  /// loading while the content does not yet fill the viewport.
+  ///
+  /// Only a settled `success` state qualifies: after a failed load-more the
+  /// user retries explicitly from the inline error tile, otherwise this would
+  /// retry in a loop.
+  void _scheduleViewportFill(PaginatedState<T> state) {
+    if (!state.status.isSuccess || !_cubit.canLoadMore) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (_scrollController.position.maxScrollExtent > 0) return;
+      if (_cubit.state.status.isSuccess && _cubit.canLoadMore) {
+        _cubit.loadMore();
+      }
+    });
+  }
+
   // ════════════════════════════════════════════════════════════════
   // Build
   // ════════════════════════════════════════════════════════════════
@@ -151,6 +171,7 @@ class _PaginatedListWidgetState<C extends PaginatedAsyncCubit<T>, T>
         }
 
         // Populated list.
+        _scheduleViewportFill(state);
         return _wrapRefresh(_buildListView(state));
       },
     );
