@@ -26,7 +26,8 @@ class AppConfig {
     defaultValue: true,
   );
 
-  /// Comma-separated leaf-certificate SHA-256 fingerprints. Production must
+  /// Comma-separated TLS pins (certificate SHA-256 hex, or `spki:` + public-key
+  /// SHA-256 hex/base64; see `CertificatePinningPolicy`). Production must
   /// provide at least a primary and a backup/next certificate pin.
   static const String tlsSha256Pins = String.fromEnvironment('TLS_SHA256_PINS');
 
