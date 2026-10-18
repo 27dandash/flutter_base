@@ -12,6 +12,7 @@ import 'interceptors/locale_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
 import 'security/certificate_pinning_policy.dart';
+import 'security/spki_extractor.dart';
 
 class DioClient {
   DioClient._() {
@@ -52,14 +53,16 @@ class DioClient {
 
   /// Opt-in TLS certificate pinning (defense in depth — disabled by default).
   ///
-  /// Pass the lowercase, colon-free **SHA-256 fingerprints of the server
-  /// certificate(s)** you trust. Call ONCE during bootstrap, before the first
-  /// request:
+  /// Pass the pins you trust (see [CertificatePinningPolicy] for the formats):
+  /// a 64-hex SHA-256 of the whole certificate, or `spki:` + the SHA-256 of its
+  /// public key, which keeps working when the certificate is renewed with the
+  /// same key. Always include a backup so a rotation never needs an app update.
+  /// Call ONCE during bootstrap, before the first request:
   ///
   /// ```dart
   /// DioClient().enableCertificatePinning(const [
-  ///   'a1b2c3...', // primary cert
-  ///   'd4e5f6...', // backup cert (rotate without an app update)
+  ///   'spki:xkXH676UALlsmpEaISL9qd5kuLNJ6/Uogl4I8h8l9mY=', // current key
+  ///   'spki:uCweXbdwAkTgdTlWfUVqrkPa/3xIdS84xdeP30AHXcA=', // backup key
   /// ]);
   /// ```
   ///
@@ -78,28 +81,30 @@ class DioClient {
     if (adapter is IOHttpClientAdapter) {
       adapter.createHttpClient = () {
         final client = HttpClient();
-        client.badCertificateCallback = (certificate, host, _) {
-          final fingerprint = sha256.convert(certificate.der).toString();
-          return policy.accepts(
-            fingerprint: fingerprint,
-            host: host,
-            notBefore: certificate.startValidity,
-            notAfter: certificate.endValidity,
-          );
-        };
+        client.badCertificateCallback = (certificate, host, _) =>
+            _acceptsCertificate(policy, certificate, host);
         return client;
       };
       adapter.validateCertificate = (certificate, host, port) {
         if (certificate == null) return false;
-        final fingerprint = sha256.convert(certificate.der).toString();
-        return policy.accepts(
-          fingerprint: fingerprint,
-          host: host,
-          notBefore: certificate.startValidity,
-          notAfter: certificate.endValidity,
-        );
+        return _acceptsCertificate(policy, certificate, host);
       };
     }
+  }
+
+  static bool _acceptsCertificate(
+    CertificatePinningPolicy policy,
+    X509Certificate certificate,
+    String host,
+  ) {
+    final spki = extractSubjectPublicKeyInfo(certificate.der);
+    return policy.accepts(
+      fingerprint: sha256.convert(certificate.der).toString(),
+      spkiFingerprint: spki == null ? null : sha256.convert(spki).toString(),
+      host: host,
+      notBefore: certificate.startValidity,
+      notAfter: certificate.endValidity,
+    );
   }
 
   // Guarantee a trailing slash so relative endpoints (`auth/login`) resolve
