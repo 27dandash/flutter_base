@@ -1,13 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../core/shared/extensions/material_color_extension.dart';
 import '../res/config_imports.dart';
 
 class AppTheme {
+  /// Material 3 derives every component color (buttons, switches, focus rings,
+  /// date pickers, progress indicators) from the [ColorScheme]. `primarySwatch`
+  /// is ignored under Material 3, so without an explicit scheme the whole app
+  /// rendered in the framework's default purple instead of the design tokens.
+  static final ColorScheme lightColorScheme =
+      ColorScheme.fromSeed(
+        seedColor: AppColors.brand,
+        brightness: Brightness.light,
+      ).copyWith(
+        primary: AppColors.brand,
+        onPrimary: AppColors.textOnDark,
+        primaryContainer: AppColors.brandSurface,
+        onPrimaryContainer: AppColors.main,
+        secondary: AppColors.primary,
+        onSecondary: AppColors.textOnDark,
+        surface: AppColors.card,
+        onSurface: AppColors.main,
+        onSurfaceVariant: AppColors.hintText,
+        surfaceContainerHighest: AppColors.fill,
+        outline: AppColors.borderStrong,
+        outlineVariant: AppColors.border,
+        error: AppColors.error,
+        onError: AppColors.textOnDark,
+      );
+
+  static final ColorScheme darkColorScheme =
+      ColorScheme.fromSeed(
+        seedColor: AppColorsWithDarkMode.brand,
+        brightness: Brightness.dark,
+      ).copyWith(
+        primary: AppColorsWithDarkMode.brand,
+        onPrimary: AppColors.main,
+        primaryContainer: AppColorsWithDarkMode.brandSurface,
+        onPrimaryContainer: AppColorsWithDarkMode.main,
+        secondary: AppColorsWithDarkMode.primary,
+        onSecondary: AppColors.main,
+        surface: AppColorsWithDarkMode.card,
+        onSurface: AppColorsWithDarkMode.main,
+        onSurfaceVariant: AppColorsWithDarkMode.hintText,
+        surfaceContainerHighest: AppColorsWithDarkMode.fill,
+        outline: AppColorsWithDarkMode.borderStrong,
+        outlineVariant: AppColorsWithDarkMode.border,
+        error: AppColorsWithDarkMode.error,
+        onError: AppColors.main,
+      );
+
+  /// System bar style that matches [theme]: dark icons on a light theme and
+  /// light icons on a dark one (iOS reads `statusBarBrightness`, which is the
+  /// brightness of the *content behind* the bar, hence inverted).
+  static SystemUiOverlayStyle systemUiStyleFor(ThemeData theme) {
+    final isLight = theme.brightness == Brightness.light;
+    final iconBrightness = isLight ? Brightness.dark : Brightness.light;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: iconBrightness,
+      statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: theme.scaffoldBackgroundColor,
+      systemNavigationBarIconBrightness: iconBrightness,
+      systemNavigationBarDividerColor: Colors.transparent,
+    );
+  }
+
   static ThemeData get light {
     return ThemeData(
       brightness: Brightness.light,
-      primarySwatch: AppColors.primary.toMaterialColor(),
+      colorScheme: lightColorScheme,
       primaryColor: AppColors.primary,
       useMaterial3: true,
       hoverColor: Colors.transparent,
@@ -59,7 +121,7 @@ class AppTheme {
   static ThemeData get dark {
     return ThemeData(
       brightness: Brightness.dark,
-      primarySwatch: AppColorsWithDarkMode.primary.toMaterialColor(),
+      colorScheme: darkColorScheme,
       primaryColor: AppColorsWithDarkMode.primary,
       useMaterial3: true,
       fontFamily: ConstantManager.fontFamily,
