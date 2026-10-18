@@ -98,7 +98,8 @@ for file in \
   done
 done
 
-if grep -R -n '^alwaysApply: true$' "$PROJECT_ROOT/.cursor/reference"; then
+if [[ -d "$PROJECT_ROOT/.cursor/reference" ]] &&
+  grep -R -n '^alwaysApply: true$' "$PROJECT_ROOT/.cursor/reference"; then
   fail "archived Cursor reference material must never be always-applied"
 fi
 

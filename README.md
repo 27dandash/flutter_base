@@ -25,7 +25,7 @@ test/                         unit, widget, boundary, and configuration tests
 integration_test/             critical runtime smoke flows
 scripts/                      deterministic quality/release checks
 tool/                         generators and widget gallery
-docs/                         architecture, release, catalog, prompts, reports
+docs/                         architecture, release, catalog, prompts
 ```
 
 ## 4. Requirements and toolchain
@@ -233,11 +233,9 @@ API collection: `{{API_COLLECTION_URL}}`. Backend docs: `{{BACKEND_DOCUMENTATION
 ## 38. Documentation
 
 Current architecture, catalog, release, QA, size, and prompts are under `docs/`.
-The cross-project evidence ledger and recurring-failure adoption decisions are
-in `docs/CROSS_PROJECT_CODEX_HISTORY_AUDIT_2026-08-31.md`.
-The identity/native-parity closeout is
-`docs/reports/PROJECT_IDENTITY_MIGRATION_REPORT.md`. Historical reports retain
-original measurements/paths when clearly labeled as evidence.
+Inherited behaviour to know about is in `docs/HARDENING_NOTES.md`. The base
+also ships its own build history (audits, reports, archived skills); a new
+product removes it with `scripts/start_new_project.sh`.
 
 ## 39. Canonical widgets
 
