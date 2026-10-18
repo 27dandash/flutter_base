@@ -191,12 +191,13 @@ class _DefaultTextFieldState extends State<DefaultTextField> {
       maxLength: widget.maxLength,
       maxLines: resolvedMaxLines,
       minLines: resolvedMinLines,
-      autocorrect: widget.autocorrect,
-      enableSuggestions: widget.enableSuggestions,
+      // Never learn or suggest from a secret.
+      autocorrect: obscured ? false : widget.autocorrect,
+      enableSuggestions: obscured ? false : widget.enableSuggestions,
       autovalidateMode: widget.autovalidateMode,
       scrollPadding: widget.scrollPadding,
       autofillHints:
-          widget.autofillHints ?? _autofillHintsFor(widget.inputType),
+          widget.autofillHints ?? _autofillHintsFor(widget, obscured),
       inputFormatters: widget.inputFormatters,
       validator: widget.validator,
       onSaved: widget.onSaved,
@@ -279,14 +280,21 @@ class _DefaultTextFieldState extends State<DefaultTextField> {
   }
 }
 
-/// Maps a [TextInputType] to the system autofill suggestions the platform
-/// can offer (e.g. iOS keychain emails, Android Smart Lock phone numbers).
-List<String> _autofillHintsFor(TextInputType type) {
+/// Autofill suggestions for a field that did not pass explicit
+/// [DefaultTextField.autofillHints].
+///
+/// Only unambiguous types get a hint. The previous default offered
+/// `name`/`username` for *every* other field, including passwords, amounts and
+/// free text, which makes password managers fill the wrong value and surfaces
+/// contact suggestions on unrelated inputs. Pass `autofillHints` for the login
+/// username, the one-time code and similar fields.
+Iterable<String>? _autofillHintsFor(DefaultTextField field, bool obscured) {
+  if (obscured) return const [AutofillHints.password];
+  final type = field.inputType;
   if (type == TextInputType.emailAddress) return const [AutofillHints.email];
-  if (type == TextInputType.datetime) return const [AutofillHints.birthday];
   if (type == TextInputType.phone) {
     return const [AutofillHints.telephoneNumber];
   }
   if (type == TextInputType.url) return const [AutofillHints.url];
-  return const [AutofillHints.name, AutofillHints.username];
+  return null;
 }

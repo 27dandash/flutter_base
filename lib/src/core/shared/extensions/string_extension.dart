@@ -7,8 +7,12 @@ extension FormatString on String {
     return '${this[0].toUpperCase()}${substring(1)}';
   }
 
+  /// Converts Arabic-Indic (٠-٩) and Persian (۰-۹) digits to ASCII.
   String toEnglishNumbers() {
-    return replaceAll('٠', '0')
+    return replaceAllMapped(RegExp('[\u06F0-\u06F9]'), (m) {
+          return String.fromCharCode(m[0]!.codeUnitAt(0) - 0x06F0 + 0x30);
+        })
+        .replaceAll('٠', '0')
         .replaceAll('١', '1')
         .replaceAll('٢', '2')
         .replaceAll('٣', '3')

@@ -177,4 +177,63 @@ void main() {
       expect(editable.minLines, 1);
     },
   );
+
+  group('autofill and keyboard learning', () {
+    EditableText editable(WidgetTester tester) =>
+        tester.widget<EditableText>(find.byType(EditableText));
+
+    testWidgets('a password field asks for the password hint only', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_host(const DefaultTextField(isPassword: true)));
+
+      expect(editable(tester).autofillHints, [AutofillHints.password]);
+      expect(editable(tester).autocorrect, isFalse);
+      expect(editable(tester).enableSuggestions, isFalse);
+    });
+
+    testWidgets('typed fields get the matching hint', (tester) async {
+      Future<Iterable<String>?> hintsFor(TextInputType type) async {
+        await tester.pumpWidget(_host(DefaultTextField(inputType: type)));
+        return editable(tester).autofillHints;
+      }
+
+      expect(await hintsFor(TextInputType.emailAddress), [AutofillHints.email]);
+      expect(await hintsFor(TextInputType.phone), [
+        AutofillHints.telephoneNumber,
+      ]);
+      expect(await hintsFor(TextInputType.url), [AutofillHints.url]);
+    });
+
+    testWidgets('free text and numbers get no contact autofill', (
+      tester,
+    ) async {
+      for (final type in [
+        TextInputType.text,
+        TextInputType.number,
+        TextInputType.multiline,
+        TextInputType.datetime,
+      ]) {
+        await tester.pumpWidget(_host(DefaultTextField(inputType: type)));
+        expect(editable(tester).autofillHints, isNull, reason: '$type');
+      }
+    });
+
+    testWidgets('explicit hints are respected', (tester) async {
+      await tester.pumpWidget(
+        _host(const DefaultTextField(autofillHints: [AutofillHints.username])),
+      );
+
+      expect(editable(tester).autofillHints, [AutofillHints.username]);
+    });
+
+    testWidgets('ordinary fields keep autocorrect and suggestions', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_host(const DefaultTextField()));
+
+      expect(editable(tester).autocorrect, isTrue);
+      expect(editable(tester).enableSuggestions, isTrue);
+    });
+  });
 }

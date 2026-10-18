@@ -1,5 +1,45 @@
 import 'package:flutter/services.dart';
 
+import '../extensions/string_extension.dart';
+
+/// Arabic and Persian keyboards produce digits and separators that are not
+/// ASCII. Rejecting them (as the formatters used to) silently swallows what the
+/// user types, while the validators and the HTTP layer already expect them to
+/// be normalized. 1:1 replacements keep the selection and composing ranges
+/// valid.
+TextEditingValue _asciiDigits(
+  TextEditingValue value, {
+  bool separators = false,
+}) {
+  var text = value.text.toEnglishNumbers();
+  if (separators) {
+    text = text.replaceAll('٫', '.').replaceAll('٬', ',');
+  }
+  return text == value.text ? value : value.copyWith(text: text);
+}
+
+/// Where the caret goes after the text was rewritten with extra or removed
+/// separators: right after the same number of significant characters as before.
+TextSelection _caretAfterFormatting({
+  required String formatted,
+  required TextEditingValue input,
+  required bool Function(String character) isSeparator,
+}) {
+  final offset = input.selection.extentOffset.clamp(0, input.text.length);
+  var significant = 0;
+  for (var i = 0; i < offset; i++) {
+    if (!isSeparator(input.text[i])) significant++;
+  }
+  if (significant == 0) return const TextSelection.collapsed(offset: 0);
+  var seen = 0;
+  for (var i = 0; i < formatted.length; i++) {
+    if (!isSeparator(formatted[i]) && ++seen == significant) {
+      return TextSelection.collapsed(offset: i + 1);
+    }
+  }
+  return TextSelection.collapsed(offset: formatted.length);
+}
+
 /// Saudi phone formatter - allows only digits and the + prefix
 class SaudiPhoneFormatter extends TextInputFormatter {
   @override
@@ -7,12 +47,10 @@ class SaudiPhoneFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Allow only digits and + (for +966 format)
-    final RegExp regExp = RegExp(r'^[0-9+]*$');
-    if (regExp.hasMatch(newValue.text)) {
-      return newValue;
-    }
-    return oldValue;
+    // Allow only digits and + (for +966 format); Arabic-Indic digits are
+    // accepted and converted.
+    final value = _asciiDigits(newValue);
+    return RegExp(r'^[0-9+]*$').hasMatch(value.text) ? value : oldValue;
   }
 }
 
@@ -24,13 +62,8 @@ class PhoneNumberFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     // Allow only digits, +, -, (, ), and spaces
-    final RegExp regExp = RegExp(r'^[0-9+\-() ]*$');
-
-    if (regExp.hasMatch(newValue.text)) {
-      return newValue;
-    }
-
-    return oldValue;
+    final value = _asciiDigits(newValue);
+    return RegExp(r'^[0-9+\-() ]*$').hasMatch(value.text) ? value : oldValue;
   }
 }
 
@@ -59,14 +92,9 @@ class NumberOnlyFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Allow only digits 0-9
-    final RegExp regExp = RegExp(r'^[0-9]*$');
-
-    if (regExp.hasMatch(newValue.text)) {
-      return newValue;
-    }
-
-    return oldValue;
+    // Allow only digits; Arabic-Indic digits are accepted and converted.
+    final value = _asciiDigits(newValue);
+    return RegExp(r'^[0-9]*$').hasMatch(value.text) ? value : oldValue;
   }
 }
 
@@ -147,25 +175,15 @@ class DateTimeFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Allow only digits and /
-    final RegExp regExp = RegExp(r'^[0-9/]*$');
-
-    if (!regExp.hasMatch(newValue.text)) {
+    final value = _asciiDigits(newValue);
+    // Allow only digits and /, at most DD/MM/YYYY.
+    if (!RegExp(r'^[0-9/]*$').hasMatch(value.text) || value.text.length > 10) {
       return oldValue;
     }
 
-    // Limit to 10 characters (DD/MM/YYYY)
-    if (newValue.text.length > 10) {
-      return oldValue;
-    }
-
-    // Auto-add slashes
-    String text = newValue.text;
-
-    // Remove all slashes first
-    text = text.replaceAll('/', '');
-
-    // Add slashes at appropriate positions
+    final digits = value.text.replaceAll('/', '');
+    if (digits.length > 8) return oldValue;
+    var text = digits;
     if (text.length >= 2) {
       text = '${text.substring(0, 2)}/${text.substring(2)}';
     }
@@ -175,7 +193,11 @@ class DateTimeFormatter extends TextInputFormatter {
 
     return TextEditingValue(
       text: text,
-      selection: TextSelection.collapsed(offset: text.length),
+      selection: _caretAfterFormatting(
+        formatted: text,
+        input: value,
+        isSeparator: (c) => c == '/',
+      ),
     );
   }
 }
@@ -192,30 +214,17 @@ class IntegerNumberFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Build regex pattern based on options
-    String pattern = r'^';
-
-    if (allowNegative) {
-      pattern += r'-?';
-    }
-
-    pattern += r'[0-9]*$';
-
-    final RegExp regExp = RegExp(pattern);
-
-    if (!regExp.hasMatch(newValue.text)) {
-      return oldValue;
-    }
+    final value = _asciiDigits(newValue);
+    final pattern = allowNegative ? r'^-?[0-9]*$' : r'^[0-9]*$';
+    if (!RegExp(pattern).hasMatch(value.text)) return oldValue;
 
     // Check max value if specified
-    if (maxValue != null && newValue.text.isNotEmpty) {
-      final int? value = int.tryParse(newValue.text);
-      if (value != null && value > maxValue!) {
-        return oldValue;
-      }
+    if (maxValue != null && value.text.isNotEmpty) {
+      final int? parsed = int.tryParse(value.text);
+      if (parsed != null && parsed > maxValue!) return oldValue;
     }
 
-    return newValue;
+    return value;
   }
 }
 
@@ -231,40 +240,28 @@ class DecimalNumberFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Build regex pattern based on options
-    String pattern = r'^';
-
-    if (allowNegative) {
-      pattern += r'-?';
-    }
-
-    pattern += r'[0-9]*\.?[0-9]*$';
-
-    final RegExp regExp = RegExp(pattern);
-
-    if (!regExp.hasMatch(newValue.text)) {
-      return oldValue;
-    }
+    // Arabic digits and the Arabic decimal separator are converted.
+    final value = _asciiDigits(newValue, separators: true);
+    final pattern = allowNegative
+        ? r'^-?[0-9]*\.?[0-9]*$'
+        : r'^[0-9]*\.?[0-9]*$';
+    if (!RegExp(pattern).hasMatch(value.text)) return oldValue;
 
     // Check decimal places if specified
-    if (decimalPlaces != null && newValue.text.contains('.')) {
-      final List<String> parts = newValue.text.split('.');
+    if (decimalPlaces != null && value.text.contains('.')) {
+      final parts = value.text.split('.');
       if (parts.length > 1 && parts[1].length > decimalPlaces!) {
         return oldValue;
       }
     }
-
-    // Prevent multiple decimal points
-    if (newValue.text.split('.').length > 2) {
-      return oldValue;
-    }
-
-    return newValue;
+    return value;
   }
 }
 
 /// Currency formatter - adds thousand separators on every keystroke
 /// (e.g. `3000000` → `3,000,000`) and optionally caps the value at [maxValue].
+/// The caret stays where the user is typing, leading zeros are dropped and
+/// Arabic-Indic digits are accepted.
 class CurrencyFormatter extends TextInputFormatter {
   CurrencyFormatter({this.maxValue});
 
@@ -275,10 +272,11 @@ class CurrencyFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    if (newValue.text.isEmpty) return newValue;
+    final value = _asciiDigits(newValue, separators: true);
+    if (value.text.isEmpty) return value;
 
     // Keep digits and a single decimal point only.
-    String raw = newValue.text.replaceAll(',', '');
+    final raw = value.text.replaceAll(',', '');
     if (!RegExp(r'^\d*\.?\d*$').hasMatch(raw)) return oldValue;
 
     // Enforce the optional cap on the numeric value.
@@ -288,14 +286,25 @@ class CurrencyFormatter extends TextInputFormatter {
     }
 
     final parts = raw.split('.');
-    final intPart = parts.first;
-    final grouped = _groupThousands(intPart);
+    final grouped = _groupThousands(_withoutLeadingZeros(parts.first));
     final formatted = parts.length > 1 ? '$grouped.${parts[1]}' : grouped;
 
     return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
+      selection: _caretAfterFormatting(
+        formatted: formatted,
+        input: value,
+        isSeparator: (c) => c == ',',
+      ),
     );
+  }
+
+  /// `0005` → `5`, `000` → `0`, empty stays empty (".5" keeps its integer part
+  /// empty so the user sees what they typed).
+  String _withoutLeadingZeros(String digits) {
+    if (digits.length <= 1) return digits;
+    final stripped = digits.replaceFirst(RegExp(r'^0+'), '');
+    return stripped.isEmpty ? '0' : stripped;
   }
 
   String _groupThousands(String digits) {
@@ -318,7 +327,9 @@ class IbanFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final raw = newValue.text.replaceAll(' ', '').toUpperCase();
+    // Accept Arabic-Indic digits typed by an Arabic keyboard.
+    final value = _asciiDigits(newValue);
+    final raw = value.text.replaceAll(' ', '').toUpperCase();
     if (!RegExp(r'^[A-Z0-9]*$').hasMatch(raw)) return oldValue;
 
     final buffer = StringBuffer();
@@ -329,7 +340,11 @@ class IbanFormatter extends TextInputFormatter {
     final formatted = buffer.toString();
     return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
+      selection: _caretAfterFormatting(
+        formatted: formatted,
+        input: value,
+        isSeparator: (c) => c == ' ',
+      ),
     );
   }
 }
