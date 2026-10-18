@@ -274,4 +274,18 @@ abstract final class LocaleKeys {
 
   static const String _permissionRequired = 'permission_required';
   static String get permissionRequired => _permissionRequired.tr();
+
+  static const String _offlineBannerOffline = 'offline_banner_offline';
+  static String get offlineBannerOffline => _offlineBannerOffline.tr();
+
+  static const String _offlineBannerOfflinePending =
+      'offline_banner_offline_pending';
+  static String get offlineBannerOfflinePending =>
+      _offlineBannerOfflinePending.tr();
+
+  static const String _offlineBannerSyncing = 'offline_banner_syncing';
+  static String get offlineBannerSyncing => _offlineBannerSyncing.tr();
+
+  static const String _offlineBannerWaiting = 'offline_banner_waiting';
+  static String get offlineBannerWaiting => _offlineBannerWaiting.tr();
 }

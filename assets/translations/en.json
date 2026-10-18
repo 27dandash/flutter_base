@@ -86,5 +86,9 @@
   "image_replace": "Replace image",
   "image_limit_reached": "The maximum number of images has been reached",
   "image_too_large": "The selected image is too large",
-  "permission_required": "Permission is required to continue"
+  "permission_required": "Permission is required to continue",
+  "offline_banner_offline": "No connection",
+  "offline_banner_offline_pending": "No connection — {} pending",
+  "offline_banner_syncing": "Syncing… ({})",
+  "offline_banner_waiting": "Waiting to sync ({})"
 }

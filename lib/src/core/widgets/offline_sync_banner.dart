@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,6 +17,7 @@ class OfflineSyncBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return BlocBuilder<ConnectivityCubit, bool>(
       builder: (context, online) {
         return BlocBuilder<OfflineQueueCubit, OfflineQueueState>(
@@ -26,26 +28,31 @@ class OfflineSyncBanner extends StatelessWidget {
 
             if (!online) {
               return _Banner(
-                color: Colors.red.shade600,
+                color: scheme.error,
+                foreground: scheme.onError,
                 icon: Icons.wifi_off_rounded,
                 text: queue.pending > 0
-                    ? 'لا يوجد اتصال — ${queue.pending} عملية في الانتظار'
-                    : 'لا يوجد اتصال بالإنترنت',
+                    ? 'offline_banner_offline_pending'.tr(
+                        args: ['${queue.pending}'],
+                      )
+                    : 'offline_banner_offline'.tr(),
               );
             }
 
             if (queue.isSyncing) {
               return _Banner(
-                color: Colors.orange.shade700,
+                color: scheme.primary,
+                foreground: scheme.onPrimary,
                 icon: Icons.sync_rounded,
-                text: 'جاري المزامنة... (${queue.pending})',
+                text: 'offline_banner_syncing'.tr(args: ['${queue.pending}']),
               );
             }
 
             return _Banner(
-              color: Colors.orange.shade700,
+              color: scheme.primary,
+              foreground: scheme.onPrimary,
               icon: Icons.cloud_upload_outlined,
-              text: 'بانتظار المزامنة (${queue.pending})',
+              text: 'offline_banner_waiting'.tr(args: ['${queue.pending}']),
             );
           },
         );
@@ -55,9 +62,15 @@ class OfflineSyncBanner extends StatelessWidget {
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner({required this.color, required this.icon, required this.text});
+  const _Banner({
+    required this.color,
+    required this.foreground,
+    required this.icon,
+    required this.text,
+  });
 
   final Color color;
+  final Color foreground;
   final IconData icon;
   final String text;
 
@@ -71,12 +84,12 @@ class _Banner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              Icon(icon, color: Colors.white, size: 18),
+              Icon(icon, color: foreground, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   text,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: TextStyle(color: foreground, fontSize: 13),
                 ),
               ),
             ],
