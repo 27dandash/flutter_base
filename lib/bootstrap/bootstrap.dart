@@ -29,10 +29,20 @@ import '../src/core/shared/service_locators/setup_service_locators.dart';
 import '../src/core/startup/startup_coordinator.dart';
 import '../src/core/widgets/exception_view.dart';
 import 'app_environment.dart';
+import 'global_error_handlers.dart';
 
-void bootstrap(AppEnvironment environment) {
-  WidgetsFlutterBinding.ensureInitialized();
-  runZonedGuarded(() => _start(environment), _reportBootstrapError);
+/// Starts the application.
+///
+/// [onError] receives every uncaught error (see [AppErrorReporter]); pass a
+/// crash reporter from the product's `main_*.dart`. The binding is
+/// initialized inside the guarded zone so `runApp` runs in the same zone as
+/// `ensureInitialized` (Flutter warns about a zone mismatch otherwise).
+void bootstrap(AppEnvironment environment, {AppErrorReporter? onError}) {
+  runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
+    installGlobalErrorHandlers(reporter: onError);
+    return _start(environment);
+  }, (error, stackTrace) => reportZoneError(onError, error, stackTrace));
 }
 
 Future<void> _start(AppEnvironment environment) async {
