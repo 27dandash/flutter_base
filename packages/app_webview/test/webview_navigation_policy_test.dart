@@ -10,6 +10,35 @@ AppWebViewConfig _config() => AppWebViewConfig(
 );
 
 void main() {
+  test('callback matchers ignore hosts outside the allow-list', () {
+    final policy = WebViewNavigationPolicy(_config());
+    expect(
+      policy.evaluate('https://pay.example.com/success').action,
+      WebNavigationAction.completeSuccess,
+    );
+    expect(
+      policy.evaluate('https://evil.example.net/success').action,
+      WebNavigationAction.block,
+    );
+    expect(
+      policy.evaluate('https://evil.example.net/failure').action,
+      WebNavigationAction.block,
+    );
+  });
+
+  test('custom-scheme callbacks can still complete the flow', () {
+    final config = AppWebViewConfig(
+      initialUri: Uri.parse('https://pay.example.com/start'),
+      title: 'Payment',
+      allowedHosts: const {'example.com'},
+      successMatcher: (uri) => uri.scheme == 'myapp' && uri.host == 'paid',
+    );
+    expect(
+      WebViewNavigationPolicy(config).evaluate('myapp://paid').action,
+      WebNavigationAction.completeSuccess,
+    );
+  });
+
   test('validates initial HTTPS host', () {
     expect(_config().validate(), isNull);
   });
