@@ -86,6 +86,8 @@ flutter run --flavor production -t lib/main_production.dart
 
 Production startup rejects missing endpoints or certificate pins instead of falling back to development.
 
+Pin formats, error reporting and other inherited behaviour: `docs/HARDENING_NOTES.md`.
+
 ## 11. Testing
 
 ```bash
