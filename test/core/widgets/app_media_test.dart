@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_base/src/core/widgets/image_widgets/image_view.dart';
 import 'package:flutter_base/src/core/widgets/media/media.dart';
 import 'package:flutter_base/src/core/widgets/media/app_media_file_svg_unsupported.dart'
@@ -226,5 +227,78 @@ void main() {
     await tester.pump();
     expect(controller.disposed, isTrue);
     expect(tester.takeException(), isNull);
+  });
+
+  group('network images', () {
+    testWidgets('use the disk-cached pipeline and the injected loading state', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          AppMedia.networkImage(
+            url: 'https://images.example.test/a.png',
+            width: 120,
+            height: 80,
+            loadingBuilder: (_) => const Text('loading-state'),
+          ),
+        ),
+      );
+
+      expect(find.byType(CachedNetworkImage), findsOneWidget);
+      expect(find.text('loading-state'), findsOneWidget);
+    });
+
+    testWidgets('decode size follows the layout, one dimension only', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _host(
+          AppMedia.networkImage(
+            url: 'https://images.example.test/a.png',
+            width: 120,
+            height: 80,
+          ),
+        ),
+      );
+      final image = tester.widget<CachedNetworkImage>(
+        find.byType(CachedNetworkImage),
+      );
+
+      expect(image.memCacheWidth, 240);
+      expect(image.memCacheHeight, isNull, reason: 'both would distort');
+    });
+
+    testWidgets('a huge layout hint is capped', (tester) async {
+      await tester.pumpWidget(
+        _host(
+          AppMedia.networkImage(
+            url: 'https://images.example.test/a.png',
+            width: 100000,
+          ),
+        ),
+      );
+
+      expect(
+        tester
+            .widget<CachedNetworkImage>(find.byType(CachedNetworkImage))
+            .memCacheWidth,
+        2048,
+      );
+    });
+
+    testWidgets('unbounded layout decodes at the natural size', (tester) async {
+      await tester.pumpWidget(
+        _host(AppMedia.networkImage(url: 'https://images.example.test/a.png')),
+      );
+      final image = tester.widget<CachedNetworkImage>(
+        find.byType(CachedNetworkImage),
+      );
+
+      expect(image.memCacheWidth, isNull);
+      expect(image.memCacheHeight, isNull);
+    });
   });
 }

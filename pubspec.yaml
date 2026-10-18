@@ -46,6 +46,8 @@ dependencies:
   flutter_html: ^3.0.0
   video_player: ^2.14.0
   cached_network_image: ^3.4.1
+  # Direct dependency: the session cleanup empties its disk cache on logout.
+  flutter_cache_manager: ^3.4.1
   flutter_screenutil: ^5.9.3
   # 11.x requires Android compileSdk 37; stay on the latest compatible 10.x
   # while Flutter stable targets Android API 36.
