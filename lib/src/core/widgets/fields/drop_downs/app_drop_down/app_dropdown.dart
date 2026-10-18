@@ -176,9 +176,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   /// Used in static mode — filtered from [AppDropdown.items].
   late final ValueNotifier<List<T>> _filteredItemsNotifier;
 
-  /// Used in paginated mode — filtered from [PaginatedAsyncCubit.state.data.items].
-  late final ValueNotifier<List<T>> _paginatedFilteredItemsNotifier;
-
   final TextEditingController _searchController = TextEditingController();
   bool _sheetOpen = false;
   bool _confirmationPending = false;
@@ -195,9 +192,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       widget.selectedValues ?? [],
     );
     _filteredItemsNotifier = ValueNotifier<List<T>>(widget.items);
-    _paginatedFilteredItemsNotifier = ValueNotifier<List<T>>(
-      widget.paginatedCubit?.state.data.items ?? [],
-    );
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -221,7 +215,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     _singleSelectedNotifier.dispose();
     _multiSelectedNotifier.dispose();
     _filteredItemsNotifier.dispose();
-    _paginatedFilteredItemsNotifier.dispose();
     _searchController
       ..removeListener(_onSearchChanged)
       ..dispose();
@@ -233,22 +226,26 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   // ════════════════════════════════════════════════════════════════
 
   void _onSearchChanged() {
+    // Paginated mode filters while building (see [_filterLoaded]); only the
+    // static list keeps a filtered copy.
+    if (widget.paginatedCubit != null) return;
     final q = _searchController.text.toLowerCase();
-    if (widget.paginatedCubit != null) {
-      _syncPaginatedFilter(widget.paginatedCubit!.state.data.items);
-    } else {
-      _filteredItemsNotifier.value = q.isEmpty
-          ? widget.items
-          : widget.items
-                .where((e) => widget.itemAsString(e).toLowerCase().contains(q))
-                .toList();
-    }
+    _filteredItemsNotifier.value = q.isEmpty
+        ? widget.items
+        : widget.items
+              .where((e) => widget.itemAsString(e).toLowerCase().contains(q))
+              .toList();
   }
 
-  /// Re-applies the current search query against freshly loaded pages.
-  void _syncPaginatedFilter(List<T> loadedItems) {
+  /// Applies the current search query to the pages loaded so far.
+  ///
+  /// Computed from the cubit state while building rather than copied into a
+  /// notifier from a listener: a listener only sees *changes*, so a page that
+  /// finished loading before the sheet's first frame (a fast or cached
+  /// response) would never have reached it and the sheet would stay empty.
+  List<T> _filterLoaded(List<T> loadedItems) {
     final q = _searchController.text.toLowerCase();
-    _paginatedFilteredItemsNotifier.value = q.isEmpty
+    return q.isEmpty
         ? loadedItems
         : loadedItems
               .where((e) => widget.itemAsString(e).toLowerCase().contains(q))
@@ -264,6 +261,32 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       final max = controller.position.maxScrollExtent;
       if (max > 0 &&
           controller.offset >= max * widget.loadMoreThreshold &&
+          cubit.canLoadMore) {
+        cubit.loadMore();
+      }
+    });
+  }
+
+  /// A page that does not fill the sheet cannot scroll, so the scroll listener
+  /// never fires and the remaining pages would never load. Keep loading while
+  /// the list is shorter than the sheet. Not while searching: the search runs
+  /// over the loaded pages only, and fetching every page to look for a rare
+  /// term would be an unbounded number of requests.
+  void _fillShortList(
+    ScrollController controller,
+    PaginatedAsyncCubit<T> cubit,
+    PaginatedState<T> state,
+  ) {
+    if (!state.status.isSuccess ||
+        _searchController.text.isNotEmpty ||
+        !cubit.canLoadMore) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !controller.hasClients) return;
+      if (controller.position.maxScrollExtent > 0) return;
+      if (_searchController.text.isEmpty &&
+          cubit.state.status.isSuccess &&
           cubit.canLoadMore) {
         cubit.loadMore();
       }
@@ -589,6 +612,9 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         final result = await _showMultiSelectSheet(
           _multiSelectedNotifier.value,
         );
+        // The field may have left the tree while its sheet was open (the page
+        // was replaced, the session ended): its notifiers are disposed then.
+        if (!mounted) return;
         if (result != null) {
           _multiSelectedNotifier.value = result;
           widget.onMultiChanged?.call(result);
@@ -600,6 +626,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         final result = await _showSingleSelectSheet(
           _singleSelectedNotifier.value,
         );
+        if (!mounted) return;
         if (result != null) {
           _singleSelectedNotifier.value = result;
           widget.onChanged?.call(result);
@@ -609,6 +636,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         }
       }
     } finally {
+      // Plain fields only: nothing to reset on a disposed State.
       _sheetOpen = false;
       _confirmationPending = false;
     }
@@ -633,7 +661,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     // ── Paginated path ────────────────────────────────────────────
     if (widget.paginatedCubit != null) {
       final cubit = widget.paginatedCubit!;
-      _paginatedFilteredItemsNotifier.value = cubit.state.data.items;
       // Fetch is started before the sheet opens so the cubit is already
       // in loading state when the BlocConsumer first builds.
       cubit.fetchInitialData(filterKey: widget.paginationFilterKey);
@@ -747,7 +774,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     // ── Paginated path ────────────────────────────────────────────
     if (widget.paginatedCubit != null) {
       final cubit = widget.paginatedCubit!;
-      _paginatedFilteredItemsNotifier.value = cubit.state.data.items;
       cubit.fetchInitialData(filterKey: widget.paginationFilterKey);
 
       final scrollCtrl = ScrollController();
@@ -879,10 +905,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     PaginatedAsyncCubit<T> cubit,
     ScrollController scrollCtrl,
   ) {
-    return BlocConsumer<PaginatedAsyncCubit<T>, PaginatedState<T>>(
+    return BlocBuilder<PaginatedAsyncCubit<T>, PaginatedState<T>>(
       bloc: cubit,
-      listenWhen: (_, curr) => curr.status.isSuccess,
-      listener: (_, state) => _syncPaginatedFilter(state.data.items),
       builder: (_, state) {
         if (state.isFirstLoad) {
           return const Center(child: CircularProgressIndicator());
@@ -894,13 +918,16 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           children: [
             if (widget.showSearchBox) _buildSearchBox(),
             Expanded(
-              child: ValueListenableBuilder<List<T>>(
-                valueListenable: _paginatedFilteredItemsNotifier,
-                builder: (_, filtered, _) => _buildSingleSelectList(
-                  filtered,
-                  scrollController: scrollCtrl,
-                  isLoadingMore: state.isLoadingMore,
-                ),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (_, _, _) {
+                  _fillShortList(scrollCtrl, cubit, state);
+                  return _buildSingleSelectList(
+                    _filterLoaded(state.data.items),
+                    scrollController: scrollCtrl,
+                    isLoadingMore: state.isLoadingMore,
+                  );
+                },
               ),
             ),
             if (state.hasInlineError) _buildInlinePaginationRetry(cubit),
@@ -915,10 +942,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     PaginatedAsyncCubit<T> cubit,
     ScrollController scrollCtrl,
   ) {
-    return BlocConsumer<PaginatedAsyncCubit<T>, PaginatedState<T>>(
+    return BlocBuilder<PaginatedAsyncCubit<T>, PaginatedState<T>>(
       bloc: cubit,
-      listenWhen: (_, curr) => curr.status.isSuccess,
-      listener: (_, state) => _syncPaginatedFilter(state.data.items),
       builder: (_, state) {
         if (state.isFirstLoad) {
           return const Center(child: CircularProgressIndicator());
@@ -930,13 +955,16 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           children: [
             if (widget.showSearchBox) _buildSearchBox(),
             Expanded(
-              child: ValueListenableBuilder<List<T>>(
-                valueListenable: _paginatedFilteredItemsNotifier,
-                builder: (_, filtered, _) => _buildMultiSelectList(
-                  filtered,
-                  scrollController: scrollCtrl,
-                  isLoadingMore: state.isLoadingMore,
-                ),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (_, _, _) {
+                  _fillShortList(scrollCtrl, cubit, state);
+                  return _buildMultiSelectList(
+                    _filterLoaded(state.data.items),
+                    scrollController: scrollCtrl,
+                    isLoadingMore: state.isLoadingMore,
+                  );
+                },
               ),
             ),
             if (state.hasInlineError) _buildInlinePaginationRetry(cubit),
