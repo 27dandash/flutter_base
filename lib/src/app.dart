@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -64,6 +65,12 @@ class _AppState extends State<App> {
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: ThemeMode.system,
+            // Status/navigation bar icons follow the active theme; without
+            // this they stayed dark on the dark theme.
+            builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+              value: AppTheme.systemUiStyleFor(Theme.of(context)),
+              child: child ?? const SizedBox.shrink(),
+            ),
             locale: context.locale,
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,

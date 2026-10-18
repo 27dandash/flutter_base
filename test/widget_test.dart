@@ -1,3 +1,4 @@
+import 'package:flutter_base/src/config/res/config_imports.dart';
 import 'package:flutter_base/src/config/themes/app_theme.dart';
 import 'package:flutter_base/src/core/navigation/route_generator.dart';
 import 'package:flutter_base/src/core/widgets/scaffolds/app_page_shell.dart';
@@ -148,6 +149,84 @@ void main() {
         contrast(titleColor, light.appBarTheme.backgroundColor!),
         greaterThanOrEqualTo(4.5),
       );
+    });
+  });
+
+  group('AppTheme uses the design tokens for Material 3 roles', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      return ((la > lb ? la : lb) + 0.05) / ((la > lb ? lb : la) + 0.05);
+    }
+
+    test('light scheme is built from AppColors, not the default purple', () {
+      final scheme = AppTheme.lightColorScheme;
+      expect(scheme.primary, AppColors.brand);
+      expect(scheme.onPrimary, AppColors.textOnDark);
+      expect(scheme.error, AppColors.error);
+      expect(scheme.surface, AppColors.card);
+      expect(scheme.brightness, Brightness.light);
+      // Large/bold button label contrast (WCAG large text).
+      expect(
+        contrast(scheme.onPrimary, scheme.primary),
+        greaterThanOrEqualTo(3),
+      );
+    });
+
+    test('dark scheme is built from AppColorsWithDarkMode', () {
+      final scheme = AppTheme.darkColorScheme;
+      expect(scheme.primary, AppColorsWithDarkMode.brand);
+      expect(scheme.error, AppColorsWithDarkMode.error);
+      expect(scheme.surface, AppColorsWithDarkMode.card);
+      expect(scheme.brightness, Brightness.dark);
+      expect(
+        contrast(scheme.onPrimary, scheme.primary),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    testWidgets('both themes expose those schemes', (tester) async {
+      late ThemeData light;
+      late ThemeData dark;
+      await tester.pumpWidget(
+        ScreenUtilInit(
+          designSize: const Size(375, 812),
+          builder: (_, _) {
+            light = AppTheme.light;
+            dark = AppTheme.dark;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+
+      expect(light.colorScheme.primary, AppColors.brand);
+      expect(dark.colorScheme.primary, AppColorsWithDarkMode.brand);
+    });
+
+    testWidgets('system bar icons contrast with the active theme', (
+      tester,
+    ) async {
+      late ThemeData light;
+      late ThemeData dark;
+      await tester.pumpWidget(
+        ScreenUtilInit(
+          designSize: const Size(375, 812),
+          builder: (_, _) {
+            light = AppTheme.light;
+            dark = AppTheme.dark;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+
+      final onLight = AppTheme.systemUiStyleFor(light);
+      final onDark = AppTheme.systemUiStyleFor(dark);
+      expect(onLight.statusBarIconBrightness, Brightness.dark);
+      expect(onDark.statusBarIconBrightness, Brightness.light);
+      expect(onLight.statusBarBrightness, Brightness.light);
+      expect(onDark.statusBarBrightness, Brightness.dark);
+      expect(onDark.systemNavigationBarColor, dark.scaffoldBackgroundColor);
+      expect(onLight.statusBarColor, Colors.transparent);
     });
   });
 }
