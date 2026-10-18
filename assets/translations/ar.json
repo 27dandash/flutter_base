@@ -86,5 +86,9 @@
   "image_replace": "استبدال الصورة",
   "image_limit_reached": "تم الوصول إلى الحد الأقصى للصور",
   "image_too_large": "حجم الصورة المختارة كبير جداً",
-  "permission_required": "يلزم منح الإذن للمتابعة"
+  "permission_required": "يلزم منح الإذن للمتابعة",
+  "offline_banner_offline": "لا يوجد اتصال بالإنترنت",
+  "offline_banner_offline_pending": "لا يوجد اتصال — {} عملية في الانتظار",
+  "offline_banner_syncing": "جاري المزامنة... ({})",
+  "offline_banner_waiting": "بانتظار المزامنة ({})"
 }
