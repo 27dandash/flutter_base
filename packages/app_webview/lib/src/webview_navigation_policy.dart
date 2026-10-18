@@ -25,14 +25,19 @@ final class WebViewNavigationPolicy {
     if (uri == null || !uri.hasScheme) {
       return const WebNavigationDecision(WebNavigationAction.block, null);
     }
-    if (config.successMatcher?.call(uri) ?? false) {
+    final scheme = uri.scheme.toLowerCase();
+    // A web page on a host outside the allow-list must not be able to finish
+    // the flow by serving a matching path (`/success`). Custom-scheme
+    // callbacks (`myapp://paid`) are not hosted pages and stay matchable.
+    final isWeb = scheme == 'https' || scheme == 'http';
+    final mayComplete = !isWeb || config.isHostAllowed(uri.host);
+    if (mayComplete && (config.successMatcher?.call(uri) ?? false)) {
       return WebNavigationDecision(WebNavigationAction.completeSuccess, uri);
     }
-    if (config.failureMatcher?.call(uri) ?? false) {
+    if (mayComplete && (config.failureMatcher?.call(uri) ?? false)) {
       return WebNavigationDecision(WebNavigationAction.completeFailure, uri);
     }
 
-    final scheme = uri.scheme.toLowerCase();
     if (scheme == 'https' || (scheme == 'http' && config.allowHttp)) {
       if (!config.isHostAllowed(uri.host)) {
         return WebNavigationDecision(WebNavigationAction.block, uri);

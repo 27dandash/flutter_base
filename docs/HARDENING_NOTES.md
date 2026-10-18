@@ -33,6 +33,12 @@ notifications plugin never prompts. Register product notification types in
 * A transient failure while restoring the session keeps the stored session;
   only an explicit rejection clears it. Logout clears image caches.
 
+## WebView
+
+`successMatcher`/`failureMatcher` only fire for `http(s)` URLs on an allowed
+host, so a foreign page cannot finish a payment flow by serving `/success`.
+Custom-scheme callbacks (`myapp://paid`) are still matched.
+
 ## Media
 
 * Network images decode at display size (capped at 2048 px) and are cached.
