@@ -312,7 +312,7 @@ class _${FEATURE_PASCAL}Body extends StatelessWidget {
 }
 EOF
 
-echo "✓ Created \$(find "$ROOT" -name '*.dart' | wc -l | tr -d ' ') Dart files."
+echo "✓ Created $(find "$ROOT" -name '*.dart' | wc -l | tr -d ' ') Dart files."
 echo
 echo "Next steps:"
 echo "  1) dart run build_runner build"

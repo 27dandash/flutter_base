@@ -28,11 +28,18 @@ esac
 rm -rf "$DEMO"
 echo "✓ Removed $DEMO"
 
+# The demo's tests import it; leaving them behind breaks `flutter analyze`.
+DEMO_TESTS="test/features/products"
+if [[ -d "$DEMO_TESTS" ]]; then
+  rm -rf "$DEMO_TESTS"
+  echo "✓ Removed $DEMO_TESTS"
+fi
+
 # Warn if anything still references the demo (routes, navigation, etc.).
-if grep -rn "features/products\|ProductsScreen\|ProductsCubit" lib >/dev/null 2>&1; then
+if grep -rn "features/products\|ProductsScreen\|ProductsCubit" lib test >/dev/null 2>&1; then
   echo
   echo "⚠ Remaining references to the demo — clean these up manually:"
-  grep -rn "features/products\|ProductsScreen\|ProductsCubit" lib || true
+  grep -rn "features/products\|ProductsScreen\|ProductsCubit" lib test || true
 fi
 
 echo
