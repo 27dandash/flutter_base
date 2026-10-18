@@ -21,6 +21,8 @@ import '../src/core/network/cache/cache_config.dart';
 import '../src/core/network/dio_client.dart';
 import '../src/core/network/api_endpoints.dart';
 import '../src/core/network/offline/offline_queue_manager.dart';
+import '../src/core/session/image_cache_cleanup.dart';
+import '../src/core/session/session_cleanup.dart';
 import '../src/core/session/session_failure_coordinator.dart';
 import '../src/core/shared/cubits/user_cubit/user_cubit.dart';
 import '../src/core/shared/helpers/helpers.dart';
@@ -121,6 +123,11 @@ void _configureCompositionRoot(AppEnvironment environment) {
       allowedHosts: {apiUri.host},
     );
   }
+  // Cached images may be private to the signed-in account (avatars, chat
+  // attachments); do not leave them readable by the next account on the device.
+  SessionCleanupRegistry.instance.register(
+    SessionCleanupHook(id: 'image_cache', action: clearImageCaches),
+  );
   final sessionFailures = SessionFailureCoordinator.instance;
   sessionFailures.onUnauthorized = userCubit.sessionRevoked;
   sessionFailures.onBlocked = (message) =>

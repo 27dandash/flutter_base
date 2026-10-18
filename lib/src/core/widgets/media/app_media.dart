@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -178,16 +179,21 @@ class AppMedia extends StatelessWidget {
       StackTrace? stackTrace,
     ) => _error(errorContext);
     final image = switch (request.source) {
-      AppMediaSource.network => Image.network(
-        request.path,
+      // Disk-cached and decoded at display size. `Image.network` keeps no disk
+      // cache and decodes the full-resolution bitmap, which exhausts memory in
+      // an image-heavy list.
+      AppMediaSource.network => CachedNetworkImage(
+        imageUrl: request.path,
         fit: fit,
         width: width,
         height: height,
-        semanticLabel: semanticLabel,
-        loadingBuilder: (context, child, progress) => progress == null
-            ? child
-            : loadingBuilder?.call(context) ?? _defaultLoading(context),
-        errorBuilder: error,
+        memCacheWidth: _decodeWidth(context),
+        memCacheHeight: _decodeWidth(context) == null
+            ? _decodeHeight(context)
+            : null,
+        placeholder: (context, _) =>
+            loadingBuilder?.call(context) ?? _defaultLoading(context),
+        errorWidget: (context, _, _) => _error(context),
       ),
       AppMediaSource.asset => Image.asset(
         request.path,
@@ -208,6 +214,21 @@ class AppMedia extends StatelessWidget {
       ),
     };
     return image;
+  }
+
+  static const int _maxDecodePixels = 2048;
+
+  /// Pixel size to decode a network image at, capped so a huge layout hint
+  /// cannot request a huge bitmap. Only one dimension is given: Flutter then
+  /// keeps the aspect ratio (both would distort it).
+  int? _decodeWidth(BuildContext context) => _decodePixels(context, width);
+
+  int? _decodeHeight(BuildContext context) => _decodePixels(context, height);
+
+  int? _decodePixels(BuildContext context, double? logical) {
+    if (logical == null || !logical.isFinite || logical <= 0) return null;
+    final pixels = (logical * MediaQuery.devicePixelRatioOf(context)).round();
+    return pixels.clamp(1, _maxDecodePixels);
   }
 
   Widget _buildSvg(BuildContext context) {
