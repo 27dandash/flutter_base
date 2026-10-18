@@ -28,8 +28,7 @@ paths, not a substitute for the behavior, boundary and security assertions.
 The 62 focused widget tests are included within the 237 root tests; they are not
 added to the root total.
 
-The invalid “187 root” report and the current manifest are reconciled in
-`TEST_COUNT_RECONCILIATION.md`: 187 was 157 root plus 30 optional tests. The
+The invalid “187 root” report was 157 root plus 30 optional tests. The
 earlier “119 successful and 2 conditional” count described an even older tree.
 The two default-run conditional tests are the OFF-mode guarantees in
 `php_envelope_test.dart`; they skip because the default compile-time flag is on.

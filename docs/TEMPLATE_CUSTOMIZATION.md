@@ -3,6 +3,9 @@
 ## Start a product safely
 
 1. Copy the base into the product repository; preserve `pubspec.lock` initially.
+   Then run `scripts/start_new_project.sh` to delete the base's own build
+   history (audits, reports, archived skills and legacy guides), and
+   `scripts/remove_demo.sh` to drop the products demo.
 2. Replace the package description, semantic version, Android namespace and all
    flavor application IDs, iOS bundle IDs, display names, launcher icons, splash
    assets, and product copy. Keep dev/staging/prod independently installable.
