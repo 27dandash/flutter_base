@@ -10,6 +10,7 @@ import 'notification_manager_platform.dart';
 import 'notification_presentation.dart';
 import 'notification_refresh_bus.dart';
 import 'notification_router.dart';
+import 'notification_session_dedupe.dart';
 import 'notification_type_registry.dart';
 import 'notification_url_policy.dart';
 
@@ -54,6 +55,8 @@ final class NotificationManager {
   int _notificationId = 0;
   String _deviceToken = '';
   bool _sessionEndInFlight = false;
+  final NotificationSessionDedupe _sessionDedupe = NotificationSessionDedupe();
+  int? _pendingBadge;
   Timer? _sessionEndReset;
   Timer? _tokenRetryTimer;
   Future<bool>? _permissionRequest;
@@ -319,6 +322,7 @@ final class NotificationManager {
     });
 
     if (spec != null && spec.endsSession) {
+      if (!_sessionDedupe.markHandled(_eventKey(message))) return;
       await _show(message);
       await _endSession();
       return;
@@ -337,6 +341,23 @@ final class NotificationManager {
       }
     }
     await _show(message);
+  }
+
+  /// Stable identity of one push, so a foreground delivery and the tap on the
+  /// same notification count as one event.
+  String _eventKey(RemoteMessage message) {
+    final id = message.messageId;
+    if (id != null && id.isNotEmpty) return id;
+    final data = message.data;
+    final keys = data.keys.toList()..sort();
+    return keys.map((k) => '$k=${data[k]}').join('&');
+  }
+
+  /// Best-effort app-icon badge sync. `flutter_local_notifications` has no
+  /// global badge setter, so the count is applied to the next iOS local
+  /// notification (`badgeNumber`). Never throws.
+  void syncAppBadge(int unreadCount) {
+    _pendingBadge = unreadCount < 0 ? 0 : unreadCount;
   }
 
   /// Tells open pages that something changed. Pages decide (scope + entity id)
@@ -379,6 +400,7 @@ final class NotificationManager {
         body: text.body,
         message: message,
         presentation: _presentation,
+        badgeNumber: _pendingBadge,
       );
     } catch (error) {
       _log('SHOW FAILED', {'errorType': error.runtimeType.toString()});
@@ -396,6 +418,12 @@ final class NotificationManager {
       return;
     }
     if (!_isActive(generation)) return;
+    if (spec != null &&
+        spec.endsSession &&
+        !_sessionDedupe.markHandled(_eventKey(message))) {
+      _log('TAP IGNORED', {'reason': 'session-end already handled'});
+      return;
+    }
     try {
       if (spec != null) _emitRefresh(spec, payload, fromTap: true);
       await _route(payload, spec);
@@ -470,6 +498,8 @@ final class NotificationManager {
     _initialized = false;
     _deviceToken = '';
     _sessionEndInFlight = false;
+    _sessionDedupe.clear();
+    _pendingBadge = null;
     _sessionEndReset?.cancel();
     _sessionEndReset = null;
     _tokenRetryTimer?.cancel();

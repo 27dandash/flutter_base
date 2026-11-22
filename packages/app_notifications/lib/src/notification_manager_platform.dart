@@ -63,6 +63,7 @@ abstract interface class NotificationManagerPlatform {
     required String body,
     required RemoteMessage message,
     required NotificationPresentation presentation,
+    int? badgeNumber,
   });
 }
 
@@ -161,10 +162,17 @@ final class DefaultNotificationManagerPlatform
   Stream<RemoteMessage> get onMessageOpenedApp =>
       FirebaseMessaging.onMessageOpenedApp;
 
+  // Deliberately NOT migrated to `register()` / `onRegistered`: those return a
+  // Firebase Installation ID (FID) for direct-send, whereas backends that send
+  // through FCM (HTTP v1 / Admin SDK) still need the registration token that
+  // `getToken` / `onTokenRefresh` return. Switching would silently change what
+  // is stored on the server.
   @override
+  // ignore: deprecated_member_use
   Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
 
   @override
+  // ignore: deprecated_member_use
   Future<String?> getToken() => _messaging.getToken();
 
   @override
@@ -174,6 +182,7 @@ final class DefaultNotificationManagerPlatform
     required String body,
     required RemoteMessage message,
     required NotificationPresentation presentation,
+    int? badgeNumber,
   }) {
     return _local.show(
       id: id,
@@ -190,10 +199,11 @@ final class DefaultNotificationManagerPlatform
           importance: Importance.high,
           priority: Priority.max,
         ),
-        iOS: const DarwinNotificationDetails(
+        iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          badgeNumber: badgeNumber,
         ),
       ),
       payload: json.encode(message.toMap()),

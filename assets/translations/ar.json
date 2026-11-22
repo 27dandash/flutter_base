@@ -90,5 +90,9 @@
   "offline_banner_offline": "لا يوجد اتصال بالإنترنت",
   "offline_banner_offline_pending": "لا يوجد اتصال — {} عملية في الانتظار",
   "offline_banner_syncing": "جاري المزامنة... ({})",
-  "offline_banner_waiting": "بانتظار المزامنة ({})"
+  "offline_banner_waiting": "بانتظار المزامنة ({})",
+  "otp_didnt_receive": "لم تتلق الرمز؟",
+  "otp_resend": "إعادة الإرسال",
+  "otp_resend_in": "إعادة الإرسال بعد {}",
+  "otp_resent": "تم إرسال رمز جديد"
 }

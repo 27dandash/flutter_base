@@ -9,6 +9,7 @@ export 'src/notification_presentation.dart';
 export 'src/notification_refresh_bus.dart';
 export 'src/notification_refresh_listener.dart';
 export 'src/notification_router.dart';
+export 'src/notification_session_dedupe.dart';
 export 'src/notification_type_registry.dart';
 export 'src/notification_url_policy.dart';
 export 'src/registration/device_registration.dart';

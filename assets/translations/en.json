@@ -90,5 +90,9 @@
   "offline_banner_offline": "No connection",
   "offline_banner_offline_pending": "No connection — {} pending",
   "offline_banner_syncing": "Syncing… ({})",
-  "offline_banner_waiting": "Waiting to sync ({})"
+  "offline_banner_waiting": "Waiting to sync ({})",
+  "otp_didnt_receive": "Didn't receive the code?",
+  "otp_resend": "Resend",
+  "otp_resend_in": "Resend in {}",
+  "otp_resent": "A new code has been sent"
 }

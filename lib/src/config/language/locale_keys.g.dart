@@ -288,4 +288,16 @@ abstract final class LocaleKeys {
 
   static const String _offlineBannerWaiting = 'offline_banner_waiting';
   static String get offlineBannerWaiting => _offlineBannerWaiting.tr();
+
+  static const String _otpDidntReceive = 'otp_didnt_receive';
+  static String get otpDidntReceive => _otpDidntReceive.tr();
+
+  static const String _otpResend = 'otp_resend';
+  static String get otpResend => _otpResend.tr();
+
+  static const String _otpResendIn = 'otp_resend_in';
+  static String get otpResendIn => _otpResendIn.tr();
+
+  static const String _otpResent = 'otp_resent';
+  static String get otpResent => _otpResent.tr();
 }

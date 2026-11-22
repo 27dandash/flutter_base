@@ -37,21 +37,34 @@ class AppButton extends StatefulWidget {
 }
 
 class _AppButtonState extends State<AppButton> {
-  bool _submitting = false;
+  /// True while [AppButton.onPressed] is running; guards against double taps
+  /// without rebuilding anything but the button itself.
+  final ValueNotifier<bool> _submitting = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _submitting.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
-    if (_submitting || widget.onPressed == null) return;
-    setState(() => _submitting = true);
+    if (_submitting.value || widget.onPressed == null) return;
+    _submitting.value = true;
     try {
       await widget.onPressed!();
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) _submitting.value = false;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final loading = widget.isLoading || _submitting;
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+    valueListenable: _submitting,
+    builder: (context, submitting, _) => _buildButton(context, submitting),
+  );
+
+  Widget _buildButton(BuildContext context, bool submitting) {
+    final loading = widget.isLoading || submitting;
     final action = widget.onPressed == null || loading ? null : _submit;
     final foreground = widget.variant == AppButtonVariant.destructive
         ? Theme.of(context).colorScheme.error

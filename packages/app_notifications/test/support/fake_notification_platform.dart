@@ -116,10 +116,14 @@ final class FakeNotificationPlatform implements NotificationManagerPlatform {
     required String body,
     required RemoteMessage message,
     required NotificationPresentation presentation,
+    int? badgeNumber,
   }) async {
+    lastBadgeNumber = badgeNumber;
     if (showFails) throw StateError('show failed');
     shown.add(ShownNotification(id, title, body, message));
   }
+
+  int? lastBadgeNumber;
 
   Future<void> close() async {
     await messages.close();

@@ -79,27 +79,58 @@ void main() {
     await platform.close();
   });
 
+  group('session end + badge', () {
+    test(
+      'a foreground block push followed by its tap ends the session once',
+      () async {
+        await start();
+        final push = _message({'type': 'blocked', 'title': 'x'});
+        platform.messages.add(push);
+        await settle();
+        platform.opened.add(push);
+        await settle();
+
+        expect(events.where((e) => e == 'session-end'), hasLength(1));
+      },
+    );
+
+    test(
+      'the unread badge is applied to the next local notification',
+      () async {
+        await start();
+        NotificationManager.instance.syncAppBadge(7);
+        platform.messages.add(_message({'type': 'admin_notify', 'title': 'x'}));
+        await settle();
+
+        expect(platform.lastBadgeNumber, 7);
+      },
+    );
+  });
+
   group('page refresh', () {
-    test('a foreground message emits one refresh for its scope + entity', () async {
-      await start();
-      final events = <NotificationRefresh>[];
-      final sub = NotificationRefreshBus.instance.stream.listen(events.add);
-      addTearDown(sub.cancel);
+    test(
+      'a foreground message emits one refresh for its scope + entity',
+      () async {
+        await start();
+        final events = <NotificationRefresh>[];
+        final sub = NotificationRefreshBus.instance.stream.listen(events.add);
+        addTearDown(sub.cancel);
 
-      platform.messages.add(
-        _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
-      );
-      // The same push delivered twice must refresh once.
-      platform.messages.add(
-        _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
-      );
-      await settle();
+        platform.messages.add(
+          _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
+        );
+        // The same push delivered twice must refresh once.
+        platform.messages.add(
+          _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
+        );
+        await settle();
 
-      expect(events, hasLength(1));
-      expect(events.single.scope, 'order');
-      expect(events.single.entityId, '42');
-      expect(events.single.fromTap, isFalse);
-    });
+        expect(events, hasLength(1));
+        expect(events.single.scope, 'order');
+        expect(events.single.entityId, '42');
+        expect(events.single.fromTap, isFalse);
+      },
+    );
 
     test('a type without refreshScope never refreshes', () async {
       await start();

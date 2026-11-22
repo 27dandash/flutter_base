@@ -48,7 +48,8 @@ class CustomImageCarousel extends StatefulWidget {
 class _CustomImageCarouselState extends State<CustomImageCarousel> {
   late final PageController _pageController;
   Timer? _autoPlayTimer;
-  int _currentIndex = 0;
+  final ValueNotifier<int> _index = ValueNotifier<int>(0);
+  int get _currentIndex => _index.value;
 
   @override
   void initState() {
@@ -63,6 +64,7 @@ class _CustomImageCarouselState extends State<CustomImageCarousel> {
   void dispose() {
     _autoPlayTimer?.cancel();
     _pageController.dispose();
+    _index.dispose();
     super.dispose();
   }
 
@@ -100,7 +102,7 @@ class _CustomImageCarouselState extends State<CustomImageCarousel> {
             child: PageView.builder(
               controller: _pageController,
               itemCount: widget.imageUrls.length,
-              onPageChanged: (i) => setState(() => _currentIndex = i),
+              onPageChanged: (i) => _index.value = i,
               itemBuilder: (_, index) => ClipRRect(
                 borderRadius: radius,
                 child: CachedImage(
@@ -115,15 +117,18 @@ class _CustomImageCarouselState extends State<CustomImageCarousel> {
           ),
         ),
         SizedBox(height: AppSize.sH10),
-        _Indicator(
-          count: widget.imageUrls.length,
-          current: _currentIndex,
-          activeColor: widget.indicatorActiveColor ?? AppColors.forth,
-          inactiveColor: widget.indicatorInactiveColor ?? AppColors.border,
-          onTap: (i) => _pageController.animateToPage(
-            i,
-            duration: widget.autoPlayAnimationDuration,
-            curve: widget.autoPlayCurve,
+        ValueListenableBuilder<int>(
+          valueListenable: _index,
+          builder: (context, current, _) => _Indicator(
+            count: widget.imageUrls.length,
+            current: current,
+            activeColor: widget.indicatorActiveColor ?? AppColors.forth,
+            inactiveColor: widget.indicatorInactiveColor ?? AppColors.border,
+            onTap: (i) => _pageController.animateToPage(
+              i,
+              duration: widget.autoPlayAnimationDuration,
+              curve: widget.autoPlayCurve,
+            ),
           ),
         ),
       ],
