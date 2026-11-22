@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -350,7 +350,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     bool isLoading = false,
     bool isFailer = false,
   }) {
-    if (isLoading) return LocaleKeys.loading;
+    // While loading the field renders normally (hint / current value); only
+    // the arrow turns into a loader and the field is not tappable.
     if (isFailer) return LocaleKeys.exceptionError;
 
     if (widget.isMultiSelect) {

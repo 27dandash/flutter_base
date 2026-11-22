@@ -7,7 +7,7 @@ import 'package:flutter_base/src/core/widgets/image_widgets/image_view.dart';
 import 'package:flutter_base/src/core/widgets/media/media.dart';
 import 'package:flutter_base/src/core/widgets/media/app_media_file_svg_unsupported.dart'
     as unsupported_file_svg;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _host(Widget child, {TextDirection direction = TextDirection.ltr}) {

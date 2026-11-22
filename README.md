@@ -30,10 +30,27 @@ docs/                         architecture, release, catalog, prompts
 
 ## 4. Requirements and toolchain
 
-- Flutter `>=3.47.1`
-- Dart `>=3.13.1 <4.0.0`
-- Android SDK/NDK and JDK 17 compatible with the checked Gradle files
-- Xcode on macOS for iOS and macOS builds
+Last verified: 2026-11-22 (analyze 0 issues, all tests green, `assembleDevelopmentDebug` builds).
+
+| Tool | Version |
+|---|---|
+| Flutter | 3.50.0 (stable) |
+| Dart | 3.14.0 (DevTools 2.61.0) |
+| Android Gradle Plugin (AGP) | 9.3.1 |
+| Gradle | 9.5.0 |
+| Kotlin | 2.4.20 (AGP built-in Kotlin) |
+| Google Services plugin | 4.4.4 |
+| Android NDK | 28.2.13676358 |
+| Android compileSdk / targetSdk / minSdk | 36 / 36 / 24 |
+| JDK | 17 |
+| Xcode | 26.6 |
+| iOS / macOS minimum | 15.0 / 12.0 |
+
+Main packages (locked): dio 5.11.1, flutter_bloc 9.1.1, get_it 9.3.0, injectable 3.0.0, easy_localization 3.0.8, hive_ce 2.24.0, flutter_screenutil 5.9.3, flutter_svg 2.5.0, material_ui 1.11.1, cupertino_ui 1.1.7, flutter_secure_storage 11.2.0, connectivity_plus 7.3.2, file_picker 13.4.1, image_cropper 14.0.0, cached_network_image 4.0.7, skeletonizer 3.0.0, equatable 3.0.0.
+
+Optional packages: firebase_core 5.2.0, firebase_messaging 17.1.0, flutter_local_notifications 23.0.3, google_maps_flutter 2.19.0, geolocator 14.1.2, webview_flutter 4.14.1, socket_io_client 3.1.6.
+
+- Flutter `>=3.50.0`, Dart `>=3.14.0 <4.0.0`
 - Swift Package Manager for the root Apple targets; CocoaPods only for optional
   integrations that do not support SwiftPM
 

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../config/res/config_imports.dart';
@@ -33,7 +33,7 @@ class CustomImageCarousel extends StatefulWidget {
     this.width,
     this.imageFit,
     this.autoPlay = true,
-    this.autoPlayDuration = const Duration(seconds: 3),
+    this.autoPlayDuration = const Duration(seconds: 10),
     this.autoPlayCurve = Curves.fastOutSlowIn,
     this.autoPlayAnimationDuration = const Duration(milliseconds: 400),
     this.borderRadius,

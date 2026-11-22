@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../media/app_media_models.dart';
 import '../media/app_media_viewer_page.dart';

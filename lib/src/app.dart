@@ -1,5 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -73,7 +73,10 @@ class _AppState extends State<App> {
             ),
             locale: context.locale,
             supportedLocales: context.supportedLocales,
-            localizationsDelegates: context.localizationDelegates,
+            localizationsDelegates: [
+              ...GlobalMaterialLocalizations.delegates,
+              ...context.localizationDelegates,
+            ],
             onGenerateRoute: RouterGenerator.getRoute,
             initialRoute: NamedRoutes.root.routeName,
           ),

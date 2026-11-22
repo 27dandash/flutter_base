@@ -110,3 +110,16 @@ Generated source is reproduced with `dart run build_runner build` followed by
 `dart run tool/generate_locale_keys.dart`. Do not use the removed
 `--delete-conflicting-outputs` build_runner option. The test-only widget gallery
 is `tool/widget_gallery/main.dart`; no production entry point may import it.
+
+## Recurring mistakes to avoid (from QA across ~19 apps)
+
+- **No tab/bottom-nav cache.** No `IndexedStack`/KeepAlive for main tabs; each selection rebuilds and re-fetches. Exactly one selected tab, one bottom nav.
+- **Notifications are triggers, not truth.** FCM + `flutter_local_notifications` only (never awesome_notifications). If the open page concerns the same entity (scope + id), refresh it in place with `NotificationRefreshListener` (no new route, old data stays visible, no flicker); another entity only updates counters/lists; duplicates refresh once. Every type has a handler; block/delete ends the session to login; cold start routes once to the right page.
+- **Refresh/loading.** Pull-to-refresh re-requests every call feeding the screen (also from empty/error), skeleton in the final card shape; separate initial/pagination/refresh/submit loading; pagination resets on refresh.
+- **Writes.** Every write hits the API (no in-memory fake success); submit buttons are idempotent and respond on the first tap.
+- **Forms.** Hints are labels ("يرجى إدخال …"), validation clears as soon as the value is valid, Arabic digits normalized, API-backed dropdown shows the loader on the arrow only.
+- **Overlays** wrap their content (Figma height), never full page; Back is one step and keeps state; arrows correct in AR/EN via one shared widget.
+- **Less `setState`.** Prefer Cubit / `ValueNotifier` + `ValueListenableBuilder`; keep `setState` only for tiny local animation/focus state.
+- **Network log.** Debug request = red, response = green, secrets redacted.
+- **Tests.** Do not read `lib/` source as text in tests; after `pumpWidget` with EasyLocalization give translations time (`tester.runAsync(Future.delayed(300ms))`); wait on the condition you assert (not on a proxy like `pendingCount == 0`); never rely on absolute ids/order of a singleton.
+- **Verification.** Never trust an analyze/test result unless `pub get` succeeded and tests really ran; one analyze/test/build/device run at a time.

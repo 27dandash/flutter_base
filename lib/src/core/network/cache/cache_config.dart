@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 
 /// Wires `dio_cache_interceptor` to an in-memory `MemCacheStore`.
@@ -37,7 +36,7 @@ class CacheConfig {
   static CacheOptions get defaultOptions => CacheOptions(
     store: store,
     policy: CachePolicy.noCache,
-    hitCacheOnErrorExcept: const [401, 403],
+    hitCacheOnErrorCodes: const [500, 502, 503, 504],
     priority: CachePriority.normal,
     keyBuilder: CacheOptions.defaultCacheKeyBuilder,
     allowPostMethod: false,
@@ -60,16 +59,26 @@ class CacheConfig {
     return CacheOptions(
       store: store,
       policy: policy,
-      hitCacheOnErrorExcept: const [401, 403],
+      hitCacheOnErrorCodes: const [500, 502, 503, 504],
       maxStale: maxStale,
       priority: CachePriority.normal,
-      keyBuilder: (RequestOptions request) {
-        final locale = request.headers['Accept-Language']?.toString() ?? '';
-        final material = '${scope.trim()}|$locale|${request.uri}';
-        return sha256.convert(utf8.encode(material)).toString();
-      },
+      keyBuilder:
+          ({required Uri url, Map<String, String>? headers, Object? body}) {
+            final locale = _headerValue(headers, 'Accept-Language');
+            final material = '${scope.trim()}|$locale|$url';
+            return sha256.convert(utf8.encode(material)).toString();
+          },
       allowPostMethod: false,
     );
+  }
+
+  static String _headerValue(Map<String, String>? headers, String name) {
+    if (headers == null) return '';
+    final lower = name.toLowerCase();
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == lower) return entry.value;
+    }
+    return '';
   }
 
   /// Clears every cached response at an authentication/session boundary.

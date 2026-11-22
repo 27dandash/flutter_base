@@ -47,7 +47,7 @@ future migration gate.
 | Standard | Classification and evidence | Status |
 | --- | --- | --- |
 | Secrets and rotation | Root policy rejects secrets; configuration contains public endpoint/pins only. Backend, signing, Firebase/APNs and Maps rotation owners are product-specific | Root policy implemented; real rotation blocked |
-| Logging/redaction | Root diagnostics are debug-only and structurally omit URL/path/query/header/body/error text; Bloc logs contain types, not state/event values | Implemented and regression-tested |
+| Logging/redaction | Root diagnostics are debug-only: request in red, response in green, path/query/body printed with credential-like keys as `<redacted>`; host and headers are never printed; Bloc logs contain types, not state/event values | Implemented and regression-tested |
 | Timeouts/retry/idempotency | Root Dio/startup policy; bounded retries for safe/idempotent operations only, UUID operation identifiers, synchronized token refresh | Implemented and tested |
 | Certificate pin rotation | Root requires distinct primary/backup exact-host SHA-256 pins and validity checks | Policy tested; live chain/rotation blocked |
 | Secure-storage/database migration and corruption | Root AES-GCM owner-scoped queue, fail-closed legacy/corrupt record handling; product databases own schema migrations | Root behavior tested; device invalidation/restore blocked |

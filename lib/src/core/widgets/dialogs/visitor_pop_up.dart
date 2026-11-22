@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../config/language/locale_keys.g.dart';
 import '../../../config/res/assets.gen.dart';
@@ -9,16 +9,30 @@ import '../../shared/extensions/widgets/widget_extentions.dart';
 import '../buttons/app_button.dart';
 import '../pickers/default_bottom_sheet.dart';
 
-Future<dynamic> visitorDialog(BuildContext context, String desc) {
+/// Asks a guest to sign in. The buttons only exist when the app supplies the
+/// action: a visible button must never be dead.
+Future<dynamic> visitorDialog(
+  BuildContext context,
+  String desc, {
+  VoidCallback? onLogin,
+  VoidCallback? onRegister,
+}) {
   return showDefaultBottomSheet(
     context: context,
-    child: VisitorBody(desc: desc),
+    child: VisitorBody(desc: desc, onLogin: onLogin, onRegister: onRegister),
   );
 }
 
 class VisitorBody extends StatefulWidget {
   final String desc;
-  const VisitorBody({super.key, required this.desc});
+  final VoidCallback? onLogin;
+  final VoidCallback? onRegister;
+  const VisitorBody({
+    super.key,
+    required this.desc,
+    this.onLogin,
+    this.onRegister,
+  });
 
   @override
   State<VisitorBody> createState() => VisitorBodyState();
@@ -63,27 +77,35 @@ class VisitorBodyState extends State<VisitorBody> {
           style: const TextStyle().setSecondryColor.s12.regular,
         ),
         AppSize.sH10.szH,
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          spacing: AppMargin.mH10,
-          children: [
-            Expanded(
-              child: AppButton(
-                label: LocaleKeys.login,
-                onPressed: () async =>
-                    {}, //async => Go.offAll(const LoginScreen()),
-              ),
-            ),
-            Expanded(
-              child: AppButton(
-                label: LocaleKeys.register,
-                variant: AppButtonVariant.secondary,
-                onPressed: () async => {},
-              ),
-            ),
-          ],
-        ),
+        if (widget.onLogin != null || widget.onRegister != null)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: AppMargin.mH10,
+            children: [
+              if (widget.onLogin != null)
+                Expanded(
+                  child: AppButton(
+                    label: LocaleKeys.login,
+                    onPressed: () async {
+                      Navigator.of(context).maybePop();
+                      widget.onLogin!();
+                    },
+                  ),
+                ),
+              if (widget.onRegister != null)
+                Expanded(
+                  child: AppButton(
+                    label: LocaleKeys.register,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: () async {
+                      Navigator.of(context).maybePop();
+                      widget.onRegister!();
+                    },
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }

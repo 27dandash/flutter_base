@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../constants/imports_constants.dart';
 import '../../factory/transition_creator.dart';

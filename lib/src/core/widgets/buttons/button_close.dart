@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 @Deprecated('Use CloseButton or IconButton with a contextual Navigator.')
 class ButtonClose extends StatelessWidget {

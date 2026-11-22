@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../config/language/locale_keys.g.dart';
 import '../media/media.dart';
@@ -39,16 +39,43 @@ class AppImagePickerField extends StatefulWidget {
   State<AppImagePickerField> createState() => _AppImagePickerFieldState();
 }
 
+/// Immutable view state of the field. Held in a [ValueNotifier] so only the
+/// field's own subtree rebuilds and no `setState` is needed.
+@immutable
+class _PickerState {
+  const _PickerState({this.files = const [], this.busy = false, this.error});
+
+  final List<File> files;
+  final bool busy;
+  final String? error;
+
+  _PickerState copyWith({
+    List<File>? files,
+    bool? busy,
+    String? error,
+    bool clearError = false,
+  }) => _PickerState(
+    files: files ?? this.files,
+    busy: busy ?? this.busy,
+    error: clearError ? null : (error ?? this.error),
+  );
+}
+
 class _AppImagePickerFieldState extends State<AppImagePickerField> {
-  late List<File> _files;
-  bool _busy = false;
-  String? _error;
+  late final ValueNotifier<_PickerState> _state;
   int _operation = 0;
+
+  List<File> get _files => _state.value.files;
+  bool get _busy => _state.value.busy;
 
   @override
   void initState() {
     super.initState();
-    _files = List<File>.from(widget.initialFiles.take(widget.maxCount));
+    _state = ValueNotifier(
+      _PickerState(
+        files: List<File>.from(widget.initialFiles.take(widget.maxCount)),
+      ),
+    );
     if (widget.recoverLostOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_recoverLost());
@@ -60,13 +87,16 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
   void didUpdateWidget(covariant AppImagePickerField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialFiles != widget.initialFiles) {
-      _files = List<File>.from(widget.initialFiles.take(widget.maxCount));
+      _state.value = _state.value.copyWith(
+        files: List<File>.from(widget.initialFiles.take(widget.maxCount)),
+      );
     }
   }
 
   @override
   void dispose() {
     _operation++;
+    _state.dispose();
     super.dispose();
   }
 
@@ -85,16 +115,13 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
   Future<void> _pick({int? replaceIndex}) async {
     if (_busy) return;
     if (replaceIndex == null && _files.length >= widget.maxCount) {
-      setState(() => _error = LocaleKeys.imageLimitReached);
+      _state.value = _state.value.copyWith(error: LocaleKeys.imageLimitReached);
       return;
     }
     final source = await _chooseSource();
     if (!mounted || source == null) return;
     final operation = ++_operation;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+    _state.value = _state.value.copyWith(busy: true, clearError: true);
     final remaining = replaceIndex == null
         ? widget.maxCount - _files.length
         : 1;
@@ -110,7 +137,7 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
       result = const AppImagePickFailure();
     }
     if (!mounted || operation != _operation) return;
-    setState(() => _busy = false);
+    _state.value = _state.value.copyWith(busy: false);
     _applyResult(result, replaceIndex: replaceIndex);
   }
 
@@ -151,11 +178,13 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
       case AppImagePickCancelled():
         return;
       case AppImagePickPermissionDenied():
-        setState(() => _error = LocaleKeys.permissionRequired);
+        _state.value = _state.value.copyWith(
+          error: LocaleKeys.permissionRequired,
+        );
       case AppImagePickTooLarge():
-        setState(() => _error = LocaleKeys.imageTooLarge);
+        _state.value = _state.value.copyWith(error: LocaleKeys.imageTooLarge);
       case AppImagePickFailure():
-        setState(() => _error = LocaleKeys.mediaLoadFailed);
+        _state.value = _state.value.copyWith(error: LocaleKeys.mediaLoadFailed);
       case AppImagePickSuccess(:final files):
         final next = List<File>.from(_files);
         if (replaceIndex != null && files.isNotEmpty) {
@@ -163,20 +192,14 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
         } else {
           next.addAll(files.take(widget.maxCount - next.length));
         }
-        setState(() {
-          _files = next;
-          _error = null;
-        });
+        _state.value = _state.value.copyWith(files: next, clearError: true);
         widget.onChanged(List<File>.unmodifiable(next));
     }
   }
 
   void _remove(int index) {
     final next = List<File>.from(_files)..removeAt(index);
-    setState(() {
-      _files = next;
-      _error = null;
-    });
+    _state.value = _state.value.copyWith(files: next, clearError: true);
     widget.onChanged(List<File>.unmodifiable(next));
   }
 
@@ -186,40 +209,48 @@ class _AppImagePickerFieldState extends State<AppImagePickerField> {
     return Semantics(
       container: true,
       label: widget.semanticLabel ?? LocaleKeys.selectImage,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var index = 0; index < _files.length; index++)
-                _ImageTile(
-                  file: _files[index],
-                  onRemove: () => _remove(index),
-                  onReplace: _busy ? null : () => _pick(replaceIndex: index),
-                ),
-              if (_files.length < widget.maxCount)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _pick,
-                  icon: _busy
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add_photo_alternate_outlined),
-                  label: Text(LocaleKeys.imageAdd),
-                ),
-            ],
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Semantics(
-              liveRegion: true,
-              child: Text(_error!, style: TextStyle(color: colors.error)),
+      child: ValueListenableBuilder<_PickerState>(
+        valueListenable: _state,
+        builder: (context, state, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var index = 0; index < state.files.length; index++)
+                  _ImageTile(
+                    file: state.files[index],
+                    onRemove: () => _remove(index),
+                    onReplace: state.busy
+                        ? null
+                        : () => _pick(replaceIndex: index),
+                  ),
+                if (state.files.length < widget.maxCount)
+                  OutlinedButton.icon(
+                    onPressed: state.busy ? null : _pick,
+                    icon: state.busy
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add_photo_alternate_outlined),
+                    label: Text(LocaleKeys.imageAdd),
+                  ),
+              ],
             ),
+            if (state.error != null) ...[
+              const SizedBox(height: 8),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  state.error!,
+                  style: TextStyle(color: colors.error),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -86,7 +86,7 @@ final class DefaultNotificationManagerPlatform
     bool debug = false,
   }) async {
     await _local.initialize(
-      InitializationSettings(
+      settings: InitializationSettings(
         android: AndroidInitializationSettings(presentation.androidIcon),
         iOS: const DarwinInitializationSettings(
           requestAlertPermission: false,
@@ -176,10 +176,10 @@ final class DefaultNotificationManagerPlatform
     required NotificationPresentation presentation,
   }) {
     return _local.show(
-      id,
-      title,
-      body,
-      NotificationDetails(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           presentation.channelId,
           presentation.channelName,

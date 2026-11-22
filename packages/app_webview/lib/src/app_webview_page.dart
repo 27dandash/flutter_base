@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'webview_config.dart';
@@ -16,13 +16,50 @@ final class AppWebViewPage extends StatefulWidget {
   State<AppWebViewPage> createState() => _AppWebViewPageState();
 }
 
+/// Everything the page body shows. Held in a [ValueNotifier] so progress
+/// ticks rebuild only the body (no page-level `setState`).
+@immutable
+final class _WebViewState {
+  const _WebViewState({this.controller, this.progress = 0, this.error});
+
+  final WebViewController? controller;
+  final int progress;
+  final String? error;
+
+  _WebViewState copyWith({
+    WebViewController? controller,
+    int? progress,
+    String? error,
+    bool clearError = false,
+  }) => _WebViewState(
+    controller: controller ?? this.controller,
+    progress: progress ?? this.progress,
+    error: clearError ? null : (error ?? this.error),
+  );
+}
+
 final class _AppWebViewPageState extends State<AppWebViewPage> {
-  WebViewController? _controller;
+  final ValueNotifier<_WebViewState> _state = ValueNotifier(
+    const _WebViewState(),
+  );
   late final WebViewNavigationPolicy _policy;
   final WebViewCompletionGuard _completion = WebViewCompletionGuard();
-  int _progress = 0;
-  String? _error;
   Uri? _pageUri;
+
+  WebViewController? get _controller => _state.value.controller;
+
+  void _update(_WebViewState Function(_WebViewState current) change) {
+    if (!mounted) return;
+    _state.value = change(_state.value);
+  }
+
+  void _fail(String message) => _update((s) => s.copyWith(error: message));
+
+  @override
+  void dispose() {
+    _state.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -30,7 +67,9 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
     _policy = WebViewNavigationPolicy(widget.config);
     final error = widget.config.validate();
     if (error != null) {
-      _error = widget.config.messages.loadFailed;
+      _state.value = _state.value.copyWith(
+        error: widget.config.messages.loadFailed,
+      );
       return;
     }
     unawaited(_initialize());
@@ -47,18 +86,18 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
         ..setNavigationDelegate(
           NavigationDelegate(
             onProgress: (progress) {
-              if (mounted) setState(() => _progress = progress);
+              _update((s) => s.copyWith(progress: progress));
             },
             onPageStarted: (url) {
               _pageUri = Uri.tryParse(url);
-              if (mounted) setState(() => _error = null);
+              _update((s) => s.copyWith(clearError: true));
             },
             onPageFinished: (_) {
-              if (mounted) setState(() => _progress = 100);
+              _update((s) => s.copyWith(progress: 100));
             },
             onWebResourceError: (error) {
-              if (error.isForMainFrame == false || !mounted) return;
-              setState(() => _error = widget.config.messages.loadFailed);
+              if (error.isForMainFrame == false) return;
+              _fail(widget.config.messages.loadFailed);
             },
             onHttpError: (error) {
               // Sub-resource failures (favicon, images, scripts) must not
@@ -67,9 +106,7 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
                 requestUri: error.request?.uri,
                 pageUri: _pageUri,
               );
-              if (concernsPage && mounted) {
-                setState(() => _error = widget.config.messages.loadFailed);
-              }
+              if (concernsPage) _fail(widget.config.messages.loadFailed);
             },
             onNavigationRequest: _onNavigationRequest,
             onUrlChange: (change) {
@@ -81,12 +118,9 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
           ),
         );
       await controller.loadRequest(widget.config.initialUri);
-      if (!mounted) return;
-      setState(() => _controller = controller);
+      _update((s) => s.copyWith(controller: controller));
     } catch (_) {
-      if (mounted) {
-        setState(() => _error = widget.config.messages.loadFailed);
-      }
+      _fail(widget.config.messages.loadFailed);
     }
   }
 
@@ -111,8 +145,8 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
       case WebNavigationAction.block:
         // A blocked sub-frame is dropped quietly; only the page itself
         // being blocked is worth telling the user about.
-        if (request.isMainFrame && mounted) {
-          setState(() => _error = widget.config.messages.navigationBlocked);
+        if (request.isMainFrame) {
+          _fail(widget.config.messages.navigationBlocked);
         }
         return NavigationDecision.prevent;
     }
@@ -133,13 +167,10 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
   Future<void> _retry() async {
     final controller = _controller;
     if (controller == null) {
-      setState(() => _error = null);
+      _update((s) => s.copyWith(clearError: true));
       await _initialize();
     } else {
-      setState(() {
-        _error = null;
-        _progress = 0;
-      });
+      _update((s) => s.copyWith(clearError: true, progress: 0));
       await controller.reload();
     }
   }
@@ -166,13 +197,16 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
           title: Text(widget.config.title),
           leading: BackButton(onPressed: _handleBack),
         ),
-        body: _buildBody(),
+        body: ValueListenableBuilder<_WebViewState>(
+          valueListenable: _state,
+          builder: (context, state, _) => _buildBody(state),
+        ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    final error = _error;
+  Widget _buildBody(_WebViewState state) {
+    final error = state.error;
     if (error != null) {
       return Semantics(
         liveRegion: true,
@@ -195,7 +229,7 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
         ),
       );
     }
-    final controller = _controller;
+    final controller = state.controller;
     if (controller == null) {
       return Semantics(
         liveRegion: true,
@@ -206,9 +240,9 @@ final class _AppWebViewPageState extends State<AppWebViewPage> {
     return Stack(
       children: [
         WebViewWidget(controller: controller),
-        if (_progress < 100)
+        if (state.progress < 100)
           LinearProgressIndicator(
-            value: _progress == 0 ? null : _progress / 100,
+            value: state.progress == 0 ? null : state.progress / 100,
           ),
       ],
     );

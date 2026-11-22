@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../constants/imports_constants.dart';
 import '../helper/interfaces/helper_imports.dart';

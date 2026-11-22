@@ -1,5 +1,5 @@
 import 'package:app_maps/app_maps.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const mapsApiKeyConfigured = bool.fromEnvironment(
   'MAPS_API_KEY_CONFIGURED',

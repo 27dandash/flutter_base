@@ -1,7 +1,7 @@
 // Kept in its own file: the app test binding keeps navigator route state
 // between tests of one file, which would hide the initial route here.
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_base/src/app.dart';
 import 'package:flutter_base/src/config/language/languages.dart';

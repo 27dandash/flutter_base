@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../config/language/locale_keys.g.dart';
 import '../../config/res/config_imports.dart';
@@ -35,9 +35,10 @@ class MessageUtils {
           ScaffoldMessenger.of(context).clearSnackBars();
         },
       ),
+      // One look app-wide: green = success, red = error.
       backgroundColor: baseStatus == BaseStatus.error
-          ? AppColors.secondary
-          : AppColors.primary,
+          ? AppColors.error
+          : AppColors.success,
       behavior: SnackBarBehavior.floating,
       elevation: 4,
     );

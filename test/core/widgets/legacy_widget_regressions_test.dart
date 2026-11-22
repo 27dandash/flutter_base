@@ -10,7 +10,7 @@ import 'package:flutter_base/src/core/widgets/image_widgets/cached_image.dart';
 import 'package:flutter_base/src/core/widgets/media/app_media_viewer_page.dart';
 import 'package:flutter_base/src/core/widgets/scaffolds/arrow_widget.dart';
 import 'package:flutter_base/src/core/widgets/scaffolds/default_scaffold.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 

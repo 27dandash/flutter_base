@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../shared/cubits/user_cubit/user_cubit.dart';
 import 'session_routing_policy.dart';

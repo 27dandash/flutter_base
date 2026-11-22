@@ -2,7 +2,7 @@ import 'package:flutter_base/src/config/res/config_imports.dart';
 import 'package:flutter_base/src/config/themes/app_theme.dart';
 import 'package:flutter_base/src/core/navigation/route_generator.dart';
 import 'package:flutter_base/src/core/widgets/scaffolds/app_page_shell.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 

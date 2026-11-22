@@ -4,7 +4,7 @@ import 'package:flutter_base/src/core/widgets/handling_views/app_state_view.dart
 import 'package:flutter_base/src/core/widgets/handling_views/empty_widget.dart';
 import 'package:flutter_base/src/core/network/error/failures.dart';
 import 'package:flutter_base/src/core/widgets/handling_views/error_view.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _host(Widget child, {ThemeMode mode = ThemeMode.light}) => MaterialApp(

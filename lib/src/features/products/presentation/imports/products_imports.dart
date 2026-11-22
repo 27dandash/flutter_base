@@ -20,7 +20,7 @@ import 'dart:async';
 // dartz exports a `State` class that collides with Flutter's. Cherry-pick
 // just the bits we use in the presentation layer.
 import 'package:dartz/dartz.dart' show Either, Left, Right, Unit;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:rxdart/rxdart.dart';

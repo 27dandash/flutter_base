@@ -32,6 +32,8 @@ void main() {
       NotificationTypeSpec(
         'order_created',
         navigate: (data) => events.add('order:${data['order_id']}'),
+        refreshScope: 'order',
+        entityIdKey: 'order_id',
       ),
       NotificationTypeSpec(
         'new_message',
@@ -72,8 +74,44 @@ void main() {
   tearDown(() async {
     debugDefaultTargetPlatformOverride = null;
     NotificationController.onFcmToken = null;
+    NotificationRefreshBus.instance.reset();
     await NotificationManager.instance.dispose();
     await platform.close();
+  });
+
+  group('page refresh', () {
+    test('a foreground message emits one refresh for its scope + entity', () async {
+      await start();
+      final events = <NotificationRefresh>[];
+      final sub = NotificationRefreshBus.instance.stream.listen(events.add);
+      addTearDown(sub.cancel);
+
+      platform.messages.add(
+        _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
+      );
+      // The same push delivered twice must refresh once.
+      platform.messages.add(
+        _message({'type': 'order_created', 'order_id': '42', 'title': 'x'}),
+      );
+      await settle();
+
+      expect(events, hasLength(1));
+      expect(events.single.scope, 'order');
+      expect(events.single.entityId, '42');
+      expect(events.single.fromTap, isFalse);
+    });
+
+    test('a type without refreshScope never refreshes', () async {
+      await start();
+      final events = <NotificationRefresh>[];
+      final sub = NotificationRefreshBus.instance.stream.listen(events.add);
+      addTearDown(sub.cancel);
+
+      platform.messages.add(_message({'type': 'admin_notify', 'title': 'x'}));
+      await settle();
+
+      expect(events, isEmpty);
+    });
   });
 
   group('foreground messages', () {
@@ -89,7 +127,10 @@ void main() {
       expect(platform.shown, hasLength(2));
       expect(platform.shown.first.title, 'Hello');
       expect(platform.shown.first.body, 'Body');
-      expect(platform.shown.map((n) => n.id), [1, 2]);
+      // The counter lives on the singleton manager, so assert the sequence
+      // (consecutive, increasing) rather than absolute values.
+      final ids = platform.shown.map((n) => n.id).toList();
+      expect(ids.last, ids.first + 1);
       expect(platform.shown.last.body, isEmpty);
     });
 

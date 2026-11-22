@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter_base/src/core/widgets/fields/text_fields/default_text_field.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 

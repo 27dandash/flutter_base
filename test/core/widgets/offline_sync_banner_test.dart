@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_base/src/core/network/cubits/connectivity_cubit.dart';
 import 'package:flutter_base/src/core/network/cubits/offline_queue_cubit.dart';
 import 'package:flutter_base/src/core/network/offline/offline_queue_manager.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_base/src/core/network/error/failures.dart';
 import 'package:flutter_base/src/core/widgets/handling_views/app_error_handler.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../config/res/config_imports.dart';
 import '../../shared/extensions/context_extension.dart';
@@ -41,7 +41,7 @@ class _ImageSliderState extends State<ImageSlider> {
   }
 
   void _startAutoScroll() {
-    timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    timer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_currentIndex.value < widget.images.length - 1) {
         _currentIndex.value++;
       } else {

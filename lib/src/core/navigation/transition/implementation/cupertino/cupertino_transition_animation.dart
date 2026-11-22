@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 import '../../factory/transition_creator.dart';
 import 'options/cupertino_animation_option.dart';

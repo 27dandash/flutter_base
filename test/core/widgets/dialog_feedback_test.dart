@@ -5,7 +5,7 @@ import 'package:flutter_base/src/core/widgets/custom_messages.dart';
 import 'package:flutter_base/src/core/widgets/dialogs/adaptive_alert.dart';
 import 'package:flutter_base/src/core/widgets/pickers/custom_dialog.dart';
 import 'package:flutter_base/src/core/widgets/pickers/default_bottom_sheet.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 

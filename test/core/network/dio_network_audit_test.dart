@@ -1011,7 +1011,9 @@ void main() {
         method: 'POST',
         ownerScope: 'test-user',
       );
-      await _pumpUntil(() => manager.pendingCount == 0);
+      // Wait for the failure callback itself: the op can leave the queue
+      // before the callback fires, so pendingCount alone is racy.
+      await _pumpUntil(() => failures.isNotEmpty && manager.pendingCount == 0);
 
       expect(failures, ['status:422']);
       manager.onOperationFailed = null;
@@ -1043,8 +1045,14 @@ void main() {
         expect(failures, isEmpty);
 
         status = 200;
-        manager.activateOwnerScope('test-user');
-        await _pumpUntil(() => manager.pendingCount == 0);
+        // The first worker may still be unwinding (single-flight guard), in
+        // which case the first activation is a no-op. Re-activate until the
+        // replay has actually reached the adapter.
+        await _pumpUntil(() {
+          manager.activateOwnerScope('test-user');
+          return throttled.callsForPath('throttled') >= 2 &&
+              manager.pendingCount == 0;
+        });
 
         expect(throttled.callsForPath('throttled'), 2);
         expect(failures, isEmpty);

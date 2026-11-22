@@ -11,7 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   # AppMedia uses CupertinoIcons; keep the font package as a direct dependency.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
+  material_ui: ^1.11.1
+  cupertino_ui: ^1.1.7
 
 #--------------------- Networks -----------------------
   dio: ^5.11.0
@@ -19,7 +21,7 @@ dependencies:
   cryptography: ^2.9.0 # AES-256-GCM authenticated offline-queue records
 
 #--------------------- Caching (Dio) + Storage (Hive CE) -----------------------
-  dio_cache_interceptor: ^3.5.0
+  dio_cache_interceptor: ^4.0.7
   # MemCacheStore (built-in to dio_cache_interceptor) is used as the cache
   # backend — no extra package needed. Persistent cache can be added later
   # by swapping the store in `cache_config.dart`.
@@ -39,22 +41,22 @@ dependencies:
   image_picker: ^1.2.3
   # 12.x removes Apache Tika from Android, supports AGP 9/Built-in Kotlin, and
   # aligns the transitive win32 graph with optional Maps/geolocator.
-  file_picker: ^12.1.1
+  file_picker: ^13.4.1
   # 12.x requires TOCropViewController 3.x, which conflicts with file_picker's
   # SwiftPM graph. 11.x still compiles against Android 36 and shares 2.x.
-  image_cropper: ^11.0.0
+  image_cropper: ^14.0.0
   flutter_html: ^3.0.0
   video_player: ^2.14.0
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.7
   # Direct dependency: the session cleanup empties its disk cache on logout.
   flutter_cache_manager: ^3.4.1
   flutter_screenutil: ^5.9.3
   # 11.x requires Android compileSdk 37; stay on the latest compatible 10.x
   # while Flutter stable targets Android API 36.
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.2.0
 
 #--------------------- State Management & Utilities -----------------------
-  equatable: ^2.1.0
+  equatable: ^3.0.0
   flutter_bloc: ^9.1.1
   get_it: ^9.2.1
   injectable: ^3.0.0
@@ -67,7 +69,7 @@ dependencies:
   lottie: ^3.5.1
   flutter_animate: ^4.5.2
   # Skeleton shimmer used by PaginatedListWidget for first-page loading.
-  skeletonizer: ^2.1.0
+  skeletonizer: ^3.0.0
 
 #--------------------- Storage & Data -----------------------
   # SecureStorage (flutter_secure_storage) is the only at-rest store —

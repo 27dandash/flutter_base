@@ -1,5 +1,4 @@
 import 'package:flutter_base/src/core/network/cache/cache_config.dart';
-import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,7 +11,10 @@ void main() {
     final options = CacheConfig.defaultOptions;
 
     expect(options.policy, CachePolicy.noCache);
-    expect(options.hitCacheOnErrorExcept, containsAll(<int>[401, 403]));
+    expect(
+      options.hitCacheOnErrorCodes,
+      isNot(anyOf(contains(401), contains(403))),
+    );
     expect(options.allowPostMethod, isFalse);
   });
 
@@ -20,17 +22,16 @@ void main() {
     final userOne = CacheConfig.requestOptions(scope: 'user:1');
     final userTwo = CacheConfig.requestOptions(scope: 'user:2');
 
-    RequestOptions request(String locale) => RequestOptions(
-      baseUrl: 'https://api.example.com',
-      path: '/profile',
-      headers: <String, dynamic>{'Accept-Language': locale},
+    String key(CacheOptions options, String locale) => options.keyBuilder(
+      url: Uri.parse('https://api.example.com/profile'),
+      headers: <String, String>{'Accept-Language': locale},
     );
 
-    final userOneArabic = userOne.keyBuilder(request('ar'));
+    final userOneArabic = key(userOne, 'ar');
 
-    expect(userOneArabic, userOne.keyBuilder(request('ar')));
-    expect(userOneArabic, isNot(userOne.keyBuilder(request('en'))));
-    expect(userOneArabic, isNot(userTwo.keyBuilder(request('ar'))));
+    expect(userOneArabic, key(userOne, 'ar'));
+    expect(userOneArabic, isNot(key(userOne, 'en')));
+    expect(userOneArabic, isNot(key(userTwo, 'ar')));
   });
 
   test('empty cache scope is rejected', () {
@@ -56,6 +57,7 @@ void main() {
         requestDate: now,
         responseDate: now,
         url: 'https://api.example.com/profile',
+        statusCode: 200,
       ),
     );
 

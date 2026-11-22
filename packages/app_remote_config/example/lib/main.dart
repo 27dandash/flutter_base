@@ -1,5 +1,5 @@
 import 'package:app_remote_config/app_remote_config.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const remoteConfigEnabled = bool.fromEnvironment(
   'REMOTE_CONFIG_ENABLED',

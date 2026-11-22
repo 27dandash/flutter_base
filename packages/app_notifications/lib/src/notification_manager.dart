@@ -8,6 +8,7 @@ import 'models/notification_payload_normalizer.dart';
 import 'notification_controller.dart';
 import 'notification_manager_platform.dart';
 import 'notification_presentation.dart';
+import 'notification_refresh_bus.dart';
 import 'notification_router.dart';
 import 'notification_type_registry.dart';
 import 'notification_url_policy.dart';
@@ -325,6 +326,7 @@ final class NotificationManager {
     if (!await _canHandle(payload)) return;
 
     if (spec != null) {
+      _emitRefresh(spec, payload, fromTap: false);
       for (final listener in List.of(_listeners)) {
         if (!listener.conditionCheck(key)) continue;
         try {
@@ -335,6 +337,26 @@ final class NotificationManager {
       }
     }
     await _show(message);
+  }
+
+  /// Tells open pages that something changed. Pages decide (scope + entity id)
+  /// whether they are affected; duplicates inside the dedupe window collapse.
+  void _emitRefresh(
+    NotificationTypeSpec spec,
+    Map<String, dynamic> payload, {
+    required bool fromTap,
+  }) {
+    final scope = spec.refreshScope;
+    if (scope == null) return;
+    final rawId = payload[spec.entityIdKey]?.toString();
+    NotificationRefreshBus.instance.emit(
+      NotificationRefresh(
+        scope: scope,
+        entityId: rawId == null || rawId.isEmpty ? null : rawId,
+        type: spec.key,
+        fromTap: fromTap,
+      ),
+    );
   }
 
   Future<void> _show(RemoteMessage message) async {
@@ -375,6 +397,7 @@ final class NotificationManager {
     }
     if (!_isActive(generation)) return;
     try {
+      if (spec != null) _emitRefresh(spec, payload, fromTap: true);
       await _route(payload, spec);
     } catch (error) {
       _log('ROUTE FAILED', {'errorType': error.runtimeType.toString()});

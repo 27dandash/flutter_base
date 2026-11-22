@@ -1,5 +1,5 @@
 import 'package:dartz/dartz.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_base/src/config/res/config_imports.dart';
 import 'package:flutter_base/src/features/products/domain/repositories/products_repository.dart';

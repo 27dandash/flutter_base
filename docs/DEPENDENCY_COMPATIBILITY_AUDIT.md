@@ -13,8 +13,8 @@ was not accepted as compatibility proof.
 | Flutter | 3.47.1 stable | 3.47.1 stable | Already the latest stable verified through the official archive/release sources |
 | Dart / DevTools | 3.13.1 / 2.60.0 | Same | Bundled with selected Flutter |
 | Java | 17.0.15 shell; 17.0.12 Gradle daemon | Same | Supported by the current Android graph |
-| Gradle / AGP | 9.1.0 / 9.0.1 | Same | Current project-compatible release pair |
-| Kotlin plugin | 2.3.20 | Same | Retained until the app and every plugin can migrate together to AGP built-in Kotlin |
+| Gradle / AGP | 9.1.0 / 9.0.1 | 9.5.0 / 9.3.1 (2026-11-22) | Current project-compatible release pair |
+| Kotlin plugin | 2.3.20 | 2.4.20, Built-in Kotlin (2026-11-22) | Retained until the app and every plugin can migrate together to AGP built-in Kotlin |
 | Android SDK | compile 36, target 36, minimum 24 | Same | Current local/store-facing baseline |
 | Android NDK | 28.2.13676358 | Same | Resolved native-plugin baseline |
 | Xcode / Swift | 26.6 (17F113) / 6.3.3 | Same | Current installed stable toolchain |

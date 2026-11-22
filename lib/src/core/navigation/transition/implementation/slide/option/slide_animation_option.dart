@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 import '../../../../constants/imports_constants.dart';
 import '../../../../helper/interfaces/helper_imports.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../config/res/config_imports.dart';
 import '../../shared/extensions/context_extension.dart';

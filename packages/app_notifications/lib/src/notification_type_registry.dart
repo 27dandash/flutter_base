@@ -23,6 +23,8 @@ final class NotificationTypeSpec {
     this.key, {
     this.navigate,
     this.endsSession = false,
+    this.refreshScope,
+    this.entityIdKey = 'entity_id',
   }) : assert(
          !endsSession || navigate == null,
          'A session-ending type is routed to onSessionEnd, not navigate.',
@@ -34,6 +36,14 @@ final class NotificationTypeSpec {
   /// When true the manager shows the notification, then invokes
   /// `onSessionEnd` and bypasses the user-preference gate.
   final bool endsSession;
+
+  /// When set, a message of this type also emits a `NotificationRefresh` for
+  /// this scope (for example `order`), so an open page about the same entity
+  /// refreshes itself in place. Null = this type never triggers a refresh.
+  final String? refreshScope;
+
+  /// Payload key holding the changed entity's id (for example `order_id`).
+  final String entityIdKey;
 }
 
 /// Product-owned table of notification types. The package ships no business
