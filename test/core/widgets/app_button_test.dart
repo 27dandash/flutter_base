@@ -8,6 +8,38 @@ import 'package:flutter_test/flutter_test.dart';
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  testWidgets('loading label cross-fades in and taps are ignored meanwhile', (
+    tester,
+  ) async {
+    final completion = Completer<void>();
+    var calls = 0;
+    await tester.pumpWidget(
+      _host(
+        AppButton(
+          label: 'Send',
+          loadingLabel: 'Sending',
+          onPressed: () {
+            calls++;
+            return completion.future;
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.text('Send'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    // Rapid extra taps while the request runs never send a second request.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byType(AppButton), warnIfMissed: false);
+      await tester.pump();
+    }
+    expect(calls, 1);
+    completion.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Send'), findsOneWidget);
+  });
+
   testWidgets('prevents duplicate async submissions and restores the action', (
     tester,
   ) async {

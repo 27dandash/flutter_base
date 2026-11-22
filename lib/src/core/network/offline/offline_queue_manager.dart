@@ -10,6 +10,9 @@ import 'package:uuid/uuid.dart';
 import '../dio_client.dart';
 import '../network_info.dart';
 import '../../shared/helpers/cache_service.dart';
+import 'offline_queue_legacy_migration.dart';
+import 'offline_queue_policy.dart';
+import 'offline_queue_sanitizer.dart';
 import 'queued_operation.dart';
 import 'offline_queue_cipher.dart';
 
@@ -25,27 +28,6 @@ class OfflineQueueManager {
   static const String _boxName = 'offline_queue_gcm_v2';
   static const String _legacyBoxName = 'offline_queue';
   static const String _encryptionKeyName = 'offline_queue_aes_key';
-  static const int _maxRetries = 5;
-
-  /// Body/header keys that must never be written to disk in a queued op.
-  /// Auth headers are re-attached by the AuthInterceptor at replay time, so
-  /// dropping them here is safe and keeps secrets out of the Hive box.
-  static const Set<String> _sensitiveKeys = {
-    'password',
-    'password_confirmation',
-    'current_password',
-    'new_password',
-    'token',
-    'access_token',
-    'refresh_token',
-    'authorization',
-    'api_key',
-    'secret',
-    'otp',
-    'pin',
-    'cvv',
-    'card_number',
-  };
 
   late final Box<String> _box;
   late final OfflineQueueCipher _cipher;
@@ -106,7 +88,12 @@ class OfflineQueueManager {
     }
     _cipher = OfflineQueueCipher(key);
     _box = await Hive.openBox<String>(_boxName);
-    await _migrateLegacyQueue(key, legacyOwnerScope: legacyOwnerScope);
+    await OfflineQueueLegacyMigration.migrate(
+      legacyBoxName: _legacyBoxName,
+      key: key,
+      legacyOwnerScope: legacyOwnerScope,
+      write: _writeOperation,
+    );
     _initialized = true;
 
     // A logout/session boundary that raced ahead of initialization queued a
@@ -161,43 +148,6 @@ class OfflineQueueManager {
     return key;
   }
 
-  Future<void> _migrateLegacyQueue(
-    List<int> key, {
-    required String? legacyOwnerScope,
-  }) async {
-    if (!await Hive.boxExists(_legacyBoxName)) return;
-    final scope = legacyOwnerScope?.trim();
-    if (scope == null || scope.isEmpty) {
-      // Old records have no user ownership metadata. Replaying them under a
-      // guessed account is unsafe, so fail closed and remove them.
-      await Hive.deleteBoxFromDisk(_legacyBoxName);
-      return;
-    }
-    final legacy = await Hive.openBox<QueuedOperation>(
-      _legacyBoxName,
-      encryptionCipher: HiveAesCipher(key),
-    );
-    try {
-      for (final operation in legacy.values) {
-        final migrated = QueuedOperation(
-          id: operation.id,
-          endpoint: operation.endpoint,
-          method: operation.method,
-          body: operation.body,
-          headers: operation.headers,
-          createdAt: operation.createdAt,
-          retryCount: operation.retryCount,
-          localId: operation.localId,
-          ownerScope: scope,
-        );
-        await _writeOperation(migrated);
-      }
-    } finally {
-      await legacy.close();
-      await Hive.deleteBoxFromDisk(_legacyBoxName);
-    }
-  }
-
   /// Drops queued writes at a session boundary so they can never be replayed
   /// with another user's credentials.
   Future<void> clearPending() async {
@@ -231,8 +181,8 @@ class OfflineQueueManager {
       id: _uuid.v4(),
       endpoint: endpoint,
       method: method.toUpperCase(),
-      body: _stripSensitive(body),
-      headers: _stripSensitive(headers),
+      body: OfflineQueueSanitizer.strip(body),
+      headers: OfflineQueueSanitizer.strip(headers),
       createdAt: DateTime.now(),
       retryCount: 0,
       localId: localId,
@@ -244,26 +194,6 @@ class OfflineQueueManager {
     // Try immediately if online.
     if (_network.isOnline) unawaited(_processQueue());
     return op;
-  }
-
-  /// Recursively removes [_sensitiveKeys] (case-insensitively) from a map
-  /// before it is persisted to the Hive box.
-  Map<String, dynamic>? _stripSensitive(Map<String, dynamic>? input) {
-    if (input == null) return null;
-    final out = <String, dynamic>{};
-    input.forEach((key, value) {
-      if (_sensitiveKeys.contains(key.toLowerCase())) return;
-      out[key] = _sanitizeValue(value);
-    });
-    return out;
-  }
-
-  Object? _sanitizeValue(Object? value) {
-    if (value is Map) {
-      return _stripSensitive(value.cast<String, dynamic>());
-    }
-    if (value is List) return value.map(_sanitizeValue).toList();
-    return value;
   }
 
   Future<void> _processQueue() async {
@@ -352,7 +282,7 @@ class OfflineQueueManager {
 
       // A client error is a permanent rejection of this exact write, so it is
       // dropped. Transient statuses (408/425/429) are retried like a 5xx.
-      if (_isPermanentClientError(code)) {
+      if (OfflineQueuePolicy.isPermanentClientError(code)) {
         await _box.delete(op.id);
         if (_isSyncCurrent(ownerScope, generation)) {
           onOperationFailed?.call(op, 'status:$code');
@@ -367,7 +297,7 @@ class OfflineQueueManager {
         return;
       }
       final code = e.response?.statusCode ?? 0;
-      if (_isPermanentClientError(code)) {
+      if (OfflineQueuePolicy.isPermanentClientError(code)) {
         await _box.delete(op.id);
         if (_isSyncCurrent(ownerScope, generation)) {
           onOperationFailed?.call(op, e);
@@ -381,12 +311,6 @@ class OfflineQueueManager {
     }
   }
 
-  /// 4xx responses that will not succeed on replay. 408 (timeout), 425 (too
-  /// early) and 429 (rate limited) describe the moment, not the request, so
-  /// the user's offline write must be kept and retried instead of lost.
-  static bool _isPermanentClientError(int code) =>
-      code >= 400 && code < 500 && code != 408 && code != 425 && code != 429;
-
   Future<void> _bumpRetry(
     QueuedOperation op,
     String ownerScope,
@@ -395,7 +319,7 @@ class OfflineQueueManager {
   }) async {
     if (!_isSyncCurrent(ownerScope, generation)) return;
     op.retryCount += 1;
-    if (op.retryCount >= _maxRetries) {
+    if (op.retryCount >= OfflineQueuePolicy.maxRetries) {
       await _box.delete(op.id);
       if (_isSyncCurrent(ownerScope, generation)) {
         onOperationFailed?.call(op, error);

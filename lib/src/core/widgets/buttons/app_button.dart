@@ -69,8 +69,9 @@ class _AppButtonState extends State<AppButton> {
     final foreground = widget.variant == AppButtonVariant.destructive
         ? Theme.of(context).colorScheme.error
         : Theme.of(context).colorScheme.primary;
-    final child = loading
+    final content = loading
         ? Row(
+            key: const ValueKey('app-button-loading'),
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox.square(
@@ -84,6 +85,7 @@ class _AppButtonState extends State<AppButton> {
             ],
           )
         : Row(
+            key: const ValueKey('app-button-label'),
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.leading != null) ...[
@@ -93,6 +95,16 @@ class _AppButtonState extends State<AppButton> {
               Flexible(child: Text(widget.label)),
             ],
           );
+
+    // Label <-> spinner cross-fades and the button resizes smoothly.
+    final child = AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: content,
+      ),
+    );
 
     final button = switch (widget.variant) {
       AppButtonVariant.primary => FilledButton(

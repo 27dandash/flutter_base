@@ -31,12 +31,9 @@ class _ProductsBody extends StatelessWidget {
                             .toList(growable: false);
 
                   if (visible.isEmpty) {
-                    // Compatibility view retained until this demo feature is
-                    // removed or migrated as a complete product slice.
-                    // ignore: deprecated_member_use_from_same_package
-                    return EmptyWidget(
+                    return AppStateView.empty(
                       title: LocaleKeys.productsEmpty,
-                      desc: LocaleKeys.errorexceptionNotcontaindesc,
+                      message: LocaleKeys.errorexceptionNotcontaindesc,
                     );
                   }
 

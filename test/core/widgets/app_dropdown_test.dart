@@ -48,6 +48,37 @@ class _DropdownCubit extends PaginatedAsyncCubit<String> {
 }
 
 void main() {
+  testWidgets('shows a spinner while loading and animates into the arrow', (
+    tester,
+  ) async {
+    var opened = 0;
+    Widget build({required bool loading}) => _host(
+      AppDropdown<String>(
+        items: const ['A', 'B'],
+        isLoading: loading,
+        itemAsString: (v) => v,
+        hint: 'Pick one',
+        onChanged: (_) => opened++,
+      ),
+    );
+
+    await tester.pumpWidget(build(loading: true));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('dropdown-loading')), findsOneWidget);
+    expect(find.byKey(const ValueKey('dropdown-arrow')), findsNothing);
+    // The field renders normally (no "Loading..." text) and is not tappable.
+    expect(find.text('Pick one'), findsOneWidget);
+    await tester.tap(find.text('Pick one'), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(BottomSheet), findsNothing);
+
+    await tester.pumpWidget(build(loading: false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('dropdown-loading')), findsNothing);
+    expect(find.byKey(const ValueKey('dropdown-arrow')), findsOneWidget);
+    expect(opened, 0);
+  });
+
   testWidgets('dismissal never applies a pending single selection', (
     tester,
   ) async {

@@ -219,13 +219,13 @@ cat > "$ROOT/presentation/imports/${FEATURE}_imports.dart" <<EOF
 /// part / part of hub for the ${FEATURE_PASCAL} feature presentation layer.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../../config/res/config_imports.dart';
 import '../../../../core/state/async/async.dart';
-import '../../../../core/widgets/scaffolds/default_scaffold.dart';
+import '../../../../core/widgets/scaffolds/app_page_shell.dart';
 import '../../domain/entities/${ENTITY}_entity.dart';
 import '../../domain/usecases/get_${FEATURE}_usecase.dart';
 
@@ -280,9 +280,9 @@ class _${FEATURE_PASCAL}ScreenState extends State<${FEATURE_PASCAL}Screen> {
   Widget build(BuildContext context) {
     return BlocProvider<${FEATURE_PASCAL}Cubit>.value(
       value: _cubit,
-      child: DefaultScaffold(
+      child: AppPageShell(
         // TODO: replace with a feature-specific LocaleKeys.* title.
-        title: ConstantManager.appName,
+        title: const Text(ConstantManager.appName),
         body: const _${FEATURE_PASCAL}Body(),
       ),
     );

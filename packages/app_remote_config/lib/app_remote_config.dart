@@ -7,133 +7,14 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 
-typedef FirebaseInitializer = Future<void> Function(FirebaseOptions? options);
+export 'src/remote_config_backend.dart';
+export 'src/remote_config_policy.dart';
+export 'src/remote_config_result.dart';
 
-abstract interface class RemoteConfigBackend {
-  Future<void> configure({
-    required Duration fetchTimeout,
-    required Duration minimumFetchInterval,
-  });
+import 'src/remote_config_backend.dart';
+import 'src/remote_config_policy.dart';
+import 'src/remote_config_result.dart';
 
-  Future<bool> fetchAndActivate();
-  String getString(String key);
-}
-
-/// Richer optional contract. Existing lightweight backends remain compatible
-/// with [RemoteConfigBackend].
-abstract interface class AdvancedRemoteConfigBackend
-    implements RemoteConfigBackend {
-  Future<void> setDefaults(Map<String, Object> defaults);
-  Future<void> fetch();
-  Future<bool> activate();
-  bool getBool(String key);
-  int getInt(String key);
-  double getDouble(String key);
-}
-
-final class FirebaseRemoteConfigBackend implements AdvancedRemoteConfigBackend {
-  FirebaseRemoteConfigBackend(this.remoteConfig);
-
-  final FirebaseRemoteConfig remoteConfig;
-
-  @override
-  Future<void> configure({
-    required Duration fetchTimeout,
-    required Duration minimumFetchInterval,
-  }) => remoteConfig.setConfigSettings(
-    RemoteConfigSettings(
-      fetchTimeout: fetchTimeout,
-      minimumFetchInterval: minimumFetchInterval,
-    ),
-  );
-
-  @override
-  Future<void> setDefaults(Map<String, Object> defaults) =>
-      remoteConfig.setDefaults(defaults);
-  @override
-  Future<void> fetch() => remoteConfig.fetch();
-  @override
-  Future<bool> activate() => remoteConfig.activate();
-  @override
-  Future<bool> fetchAndActivate() => remoteConfig.fetchAndActivate();
-  @override
-  String getString(String key) => remoteConfig.getString(key);
-  @override
-  bool getBool(String key) => remoteConfig.getBool(key);
-  @override
-  int getInt(String key) => remoteConfig.getInt(key);
-  @override
-  double getDouble(String key) => remoteConfig.getDouble(key);
-}
-
-enum RemoteConfigEnvironment { development, staging, production }
-
-final class RemoteConfigPolicy {
-  const RemoteConfigPolicy({
-    required this.fetchTimeout,
-    required this.minimumFetchInterval,
-    this.operationTimeout,
-  });
-
-  factory RemoteConfigPolicy.forEnvironment(RemoteConfigEnvironment value) =>
-      switch (value) {
-        RemoteConfigEnvironment.development => const RemoteConfigPolicy(
-          fetchTimeout: Duration(seconds: 10),
-          minimumFetchInterval: Duration.zero,
-        ),
-        RemoteConfigEnvironment.staging => const RemoteConfigPolicy(
-          fetchTimeout: Duration(seconds: 10),
-          minimumFetchInterval: Duration(minutes: 15),
-        ),
-        RemoteConfigEnvironment.production => const RemoteConfigPolicy(
-          fetchTimeout: Duration(seconds: 10),
-          minimumFetchInterval: Duration(hours: 1),
-        ),
-      };
-
-  final Duration fetchTimeout;
-  final Duration minimumFetchInterval;
-  final Duration? operationTimeout;
-
-  Duration get effectiveOperationTimeout =>
-      operationTimeout ?? fetchTimeout + const Duration(seconds: 2);
-}
-
-enum RemoteConfigOperationStatus {
-  activated,
-  fetchedNoChange,
-  initialized,
-  disabled,
-  timedOut,
-  failed,
-}
-
-final class RemoteConfigOperationResult {
-  const RemoteConfigOperationResult(this.status, {this.errorCode});
-
-  final RemoteConfigOperationStatus status;
-  final String? errorCode;
-
-  bool get isSuccess =>
-      status == RemoteConfigOperationStatus.activated ||
-      status == RemoteConfigOperationStatus.fetchedNoChange ||
-      status == RemoteConfigOperationStatus.initialized;
-}
-
-final class RemoteConfigOperationException implements Exception {
-  const RemoteConfigOperationException(this.code);
-
-  final String code;
-
-  @override
-  String toString() => 'RemoteConfigOperationException($code)';
-}
-
-/// Optional, lifecycle-safe boundary around Firebase Remote Config.
-///
-/// Construction is lazy, so a disabled provider never touches Firebase.
-/// Defaults are available before initialization or network work. Concurrent
-/// fetch-and-activate calls share one bounded native operation.
 final class AppRemoteConfig {
   AppRemoteConfig({
     RemoteConfigBackend? backend,

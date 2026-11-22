@@ -38,7 +38,7 @@ import '../../../../core/shared/extensions/widgets/widget_extentions.dart';
 // ── Reusable core widgets (the building blocks every feature reuses) ──
 import '../../../../core/navigation/navigator.dart';
 import '../../../../core/widgets/custom_messages.dart';
-import '../../../../core/widgets/handling_views/empty_widget.dart';
+import '../../../../core/widgets/handling_views/app_state_view.dart';
 import '../../../../core/widgets/icon_widget.dart';
 import '../../../../core/widgets/image_widgets/cached_image.dart';
 import '../../../../core/widgets/scaffolds/app_page_shell.dart';

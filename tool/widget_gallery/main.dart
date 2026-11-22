@@ -6,7 +6,6 @@ import 'package:flutter_base/src/core/shared/helpers/loading_manager.dart';
 import 'package:flutter_base/src/core/state/async/async.dart';
 import 'package:flutter_base/src/core/state/paginated/paginated.dart';
 import 'package:flutter_base/src/core/widgets/buttons/app_button.dart';
-import 'package:flutter_base/src/core/widgets/buttons/default_button.dart';
 import 'package:flutter_base/src/core/widgets/custom_messages.dart';
 import 'package:flutter_base/src/core/widgets/dialogs/adaptive_alert.dart';
 import 'package:flutter_base/src/core/widgets/fields/drop_downs/app_drop_down/app_dropdown.dart';
@@ -184,10 +183,6 @@ class _GalleryHomeState extends State<GalleryHome> {
                       isLoading: true,
                       onPressed: null,
                     ),
-                  ),
-                  DefaultButton(
-                    title: 'Legacy compatibility button',
-                    onTap: () {},
                   ),
                 ],
               ),

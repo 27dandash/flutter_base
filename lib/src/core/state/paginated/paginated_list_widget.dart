@@ -20,7 +20,7 @@ import 'paginated_state.dart';
 ///   PaginatedListWidget<ProductsListCubit, ProductEntity>(
 ///     itemBuilder: (_, product, i) => ProductCard(product: product),
 ///     skeletonBuilder: (_) => const ProductCardSkeleton(),
-///     emptyWidget: const EmptyWidget(title: '...', desc: '...'),
+///     emptyWidget: const AppStateView.empty(title: '...', message: '...'),
 ///     config: const PaginatedListConfig(
 ///       padding: EdgeInsets.all(12),
 ///       useSeparator: true,

@@ -3,7 +3,6 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_base/src/core/widgets/image_widgets/image_view.dart';
 import 'package:flutter_base/src/core/widgets/media/media.dart';
 import 'package:flutter_base/src/core/widgets/media/app_media_file_svg_unsupported.dart'
     as unsupported_file_svg;
@@ -178,54 +177,6 @@ void main() {
 
     expect(find.text('safe file error'), findsOneWidget);
     expect(find.textContaining('/private/missing.svg'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('legacy ImageView delegates to the canonical viewer contract', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        ImageView(
-          mediaPath: 'missing.png',
-          mediaType: MediaType.image,
-          mediaSource: MediaSource.asset,
-          minScale: 1,
-          maxScale: 3,
-          semanticLabel: 'Legacy receipt',
-        ),
-      ),
-    );
-    expect(find.byType(AppMediaViewerPage), findsOneWidget);
-    final viewer = tester.widget<InteractiveViewer>(
-      find.byType(InteractiveViewer),
-    );
-    expect(viewer.minScale, 1);
-    expect(viewer.maxScale, 3);
-    expect(find.bySemanticsLabel('Legacy receipt'), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('legacy video viewer is safe when disposed while initializing', (
-    tester,
-  ) async {
-    final pending = Completer<void>();
-    final controller = _FakeVideoController(initialization: pending);
-    await tester.pumpWidget(
-      _host(
-        ImageView(
-          mediaPath: 'legacy.mp4',
-          mediaType: MediaType.video,
-          mediaSource: MediaSource.asset,
-          videoControllerFactory: (_) => controller,
-        ),
-      ),
-    );
-    await tester.pumpWidget(_host(const SizedBox.shrink()));
-    pending.complete();
-    await tester.pump();
-    await tester.pump();
-    expect(controller.disposed, isTrue);
     expect(tester.takeException(), isNull);
   });
 
