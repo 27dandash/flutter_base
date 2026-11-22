@@ -4,8 +4,8 @@
 # with just the code, the living docs and the agent instructions.
 #
 # Removed (history of how the base was built, not guidance for a product):
-#   * docs/ audits, reports, change manifests and command logs
-#   * docs/reports, reports/, md/ (legacy guides)
+#   * docs/HISTORY.md (archived audits, reports, change manifests, command logs)
+#   * reports/, md/ (legacy guides)
 #   * .claude/reference, .cursor/reference (archived skills/rules/prompts)
 #
 # Kept: ARCHITECTURE, INTEGRATION_GUIDE, TEMPLATE_CUSTOMIZATION,
@@ -30,23 +30,7 @@ case "${1:-}" in
 esac
 
 targets=(
-  docs/AGENT_INSTRUCTIONS_AUDIT.md
-  docs/AUDIT_REPORT.md
-  docs/CHANGE_MANIFEST.md
-  docs/CODEX_INSTRUCTIONS_AUDIT.md
-  docs/COMMAND_LOG_2026-08-27.md
-  docs/CROSS_PROJECT_CODEX_HISTORY_AUDIT_2026-08-31.md
-  docs/CROSS_PROJECT_RECURRENCE.md
-  docs/DEPENDENCY_AUDIT.md
-  docs/FINAL_DEPENDENCY_LIVE_SKILLS_PROMPTS_REPORT.md
-  docs/FINAL_INDEPENDENT_PRODUCTION_REVIEW_2026-09-03.md
-  docs/PRE_DESIGN_DELEGATED_AUDIT_2026-09-05.md
-  docs/PRE_QA_HISTORICAL_TESTER_AUDIT_2026-08-31.md
-  docs/STANDARDS_AUDIT.md
-  docs/TEST_COUNT_RECONCILIATION.md
-  docs/THREE_PROVIDER_CLOSURE_2026-09-05.md
-  docs/WIDGET_HARDENING_REPORT.md
-  docs/reports
+  docs/HISTORY.md
   reports
   md
   .claude/reference

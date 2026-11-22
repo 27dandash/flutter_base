@@ -4,7 +4,7 @@ set -euo pipefail
 ARM64_APK="${1:-build/app/outputs/flutter-apk/app-production-release.apk}"
 AAB="${2:-build/app/outputs/bundle/productionRelease/app-production-release.aab}"
 
-# Audited on Flutter 3.47.1 / Dart 3.13.1 with --split-debug-info. Budgets
+# Audited on Flutter 3.50.0 / Dart 3.14.0 with --split-debug-info. Budgets
 # allow 512 KiB ARM64 growth and 1 MiB AAB growth before baseline review.
 ARM64_BASELINE_BYTES=18816110
 ARM64_MAX_BYTES=19340398

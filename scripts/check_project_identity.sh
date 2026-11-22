@@ -142,21 +142,9 @@ search_args=(
   --glob
   '!scripts/check_project_identity.sh'
   --glob
-  '!docs/COMMAND_LOG_2026-08-27.md'
-  --glob
-  '!docs/FINAL_DEPENDENCY_LIVE_SKILLS_PROMPTS_REPORT.md'
-  --glob
-  '!docs/WIDGET_HARDENING_REPORT.md'
-  --glob
-  '!docs/CHANGE_MANIFEST.md'
-  --glob
   '!docs/SIZE_AUDIT.md'
   --glob
-  '!docs/TEST_COUNT_RECONCILIATION.md'
-  --glob
-  '!docs/CROSS_PROJECT_RECURRENCE.md'
-  --glob
-  '!docs/reports/**'
+  '!docs/HISTORY.md'
   --glob
   '!reports/**'
   --glob
